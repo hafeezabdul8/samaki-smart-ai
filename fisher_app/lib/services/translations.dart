@@ -1,0 +1,47 @@
+class Translations {
+  static String get(String key, String lang) {
+    return _data[key]?[lang] ?? key;
+  }
+
+  static final Map<String, Map<String, String>> _data = {
+    'app_name': {'en': 'Samaki Smart AI', 'sw': 'Samaki Smart AI'},
+    'prices': {'en': 'Prices', 'sw': 'Bei'},
+    'orders': {'en': 'Orders', 'sw': 'Maagizo'},
+    'alerts': {'en': 'Alerts', 'sw': 'Tahadhari'},
+    'forecast': {'en': 'Forecast', 'sw': 'Utabiri'},
+    'sign_in': {'en': 'Sign In', 'sw': 'Ingia'},
+    'register': {'en': 'Register', 'sw': 'Jiandikishe'},
+    'username': {'en': 'Username', 'sw': 'Jina la mtumiaji'},
+    'password': {'en': 'Password', 'sw': 'Nywila'},
+    'phone': {'en': 'Phone', 'sw': 'Simu'},
+    'fisherman': {'en': 'Fisherman', 'sw': 'Mvuvi'},
+    'hotel_buyer': {'en': 'Hotel Buyer', 'sw': 'Mnunuzi wa Hoteli'},
+    'create_account': {'en': 'Create Account', 'sw': 'Fungua Akaunti'},
+    'welcome_back': {'en': 'Welcome Back', 'sw': 'Karibu Tena'},
+    'live_prices': {'en': 'Live Prices', 'sw': 'Bei za Moja kwa Moja'},
+    'demand_alerts': {'en': 'Demand Alerts', 'sw': 'Tahadhari za Mahitaji'},
+    'conservation': {'en': 'Conservation', 'sw': 'Uhifadhi'},
+    'no_orders': {'en': 'No orders yet', 'sw': 'Hakuna maagizo bado'},
+    'accept_order': {'en': 'Accept Order', 'sw': 'Kubali Agizo'},
+    'mark_fulfilled': {'en': 'Mark as Fulfilled', 'sw': 'Weka kama Imekamilika'},
+    'pending': {'en': 'Pending', 'sw': 'Inasubiri'},
+    'accepted': {'en': 'Accepted', 'sw': 'Imekubaliwa'},
+    'fulfilled': {'en': 'Fulfilled', 'sw': 'Imekamilika'},
+    'cancelled': {'en': 'Cancelled', 'sw': 'Imefutwa'},
+    'restricted': {'en': 'RESTRICTED', 'sw': 'HAIRUHUSIWI'},
+    'caution': {'en': 'CAUTION', 'sw': 'TAHADHARI'},
+    'sustainable': {'en': 'SUSTAINABLE', 'sw': 'ENDELEVU'},
+    'get_forecast': {'en': 'Get Forecast', 'sw': 'Pata Utabiri'},
+    'species': {'en': 'Species', 'sw': 'Aina ya Samaki'},
+    'market': {'en': 'Market', 'sw': 'Soko'},
+    'quantity': {'en': 'Quantity (kg)', 'sw': 'Kiasi (kg)'},
+    'delivery_date': {'en': 'Delivery Date', 'sw': 'Tarehe ya Uwasilishaji'},
+    'max_price': {'en': 'Max Price (TZS)', 'sw': 'Bei ya Juu (TZS)'},
+    'empowering': {'en': "Empowering Zanzibar's Fisherfolk", 'sw': 'Kuwasaidia Wavuvi wa Zanzibar'},
+    'registration_success': {'en': 'Registration successful! Please sign in.', 'sw': 'Usajili umefanikiwa! Tafadhali ingia.'},
+    'login_failed': {'en': 'Login failed', 'sw': 'Kuingia kumeshindwa'},
+    'order_accepted': {'en': 'Order accepted!', 'sw': 'Agizo limekubaliwa!'},
+    'order_fulfilled': {'en': 'Order fulfilled!', 'sw': 'Agizo limekamilika!'},
+    'hotel_pre_orders': {'en': 'Hotel pre-orders will appear here', 'sw': 'Maagizo ya hoteli yataonekana hapa'},
+  };
+}
