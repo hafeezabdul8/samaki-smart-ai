@@ -54,6 +54,27 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+import os
+import dj_database_url
+
+# Try DATABASE_URL first (Render/Heroku), fall back to individual settings
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.parse(os.environ.get('DATABASE_URL'))
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME', default='samaki_smart_db'),
+            'USER': config('DB_USER', default='feezman'),
+            'PASSWORD': config('DB_PASSWORD', default='Feezman@2026'),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
+    }
+
+'''
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -64,7 +85,7 @@ DATABASES = {
         'PORT': config('DB_PORT'),
     }
 }
-
+'''
 AUTH_PASSWORD_VALIDATORS = []
 
 LANGUAGE_CODE = 'en-us'
