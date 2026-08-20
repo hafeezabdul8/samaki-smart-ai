@@ -26,3 +26,4 @@ types-PyYAML==6.0.12.20260518
 typing_extensions==4.15.0
 gunicorn
 whitenoise
+dj-database-url
