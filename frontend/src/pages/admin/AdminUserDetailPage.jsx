@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { ArrowLeft, Phone, MapPin, Store, Hotel, Shield, Clock, Activity, AlertTriangle, Key, Lock, Unlock } from 'lucide-react'
 
-const API = 'http://10.139.233.239:8000/api/auth'
+const API = 'http://10.28.92.239:8000/api/auth'
 
 export default function AdminUserDetailPage({ token, userId, onBack }) {
   const [user, setUser] = useState(null)

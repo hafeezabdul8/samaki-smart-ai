@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { DollarSign, TrendingUp, AlertTriangle, Activity, Shield, Sparkles, Waves, Zap, Star, ShoppingCart, ArrowUpRight, ArrowDownRight, Minus, Flame, Clock, Calendar } from 'lucide-react'
 
-const API = 'http://10.139.233.239:8000/api/auth'
+const API = 'http://10.28.92.239:8000/api/auth'
 
 const statusConfig = {
   red: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20', label: 'RESTRICTED', dot: 'bg-red-500' },

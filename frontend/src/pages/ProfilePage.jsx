@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { User, Phone, MapPin, Store, Hotel, Save, CheckCircle } from 'lucide-react'
 
-const API = 'http://10.139.233.239:8000/api/auth'
+const API = 'http://10.28.92.239:8000/api/auth'
 
 export default function ProfilePage({ token, user, onProfileUpdate }) {
   const [phone, setPhone] = useState('')

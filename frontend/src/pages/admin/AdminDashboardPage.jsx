@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Users, ShoppingCart, Fish, Activity, Cpu, Shield, Clock } from 'lucide-react'
 
-const API = 'http://10.139.233.239:8000/api/auth'
+const API = 'http://10.28.92.239:8000/api/auth'
 
 export default function AdminDashboardPage({ token }) {
   const [stats, setStats] = useState(null)

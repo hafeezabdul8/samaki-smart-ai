@@ -13,7 +13,7 @@ import AdminAuditLogPage from './pages/admin/AdminAuditLogPage'
 import Navbar from './components/Navbar'
 import './index.css'
 
-const API = 'http://10.139.233.239:8000/api/auth'
+const API = 'http://10.28.92.239:8000/api/auth'
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '')
