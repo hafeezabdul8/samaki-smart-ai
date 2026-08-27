@@ -36,3 +36,4 @@ Thumbs.db
 *.apk
 *.bin
 !requirements.txt
+firebase-credentials.json
