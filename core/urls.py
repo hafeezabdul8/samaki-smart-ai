@@ -3,7 +3,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (RegisterView, PriceFeedView, HotelOrderListCreateView, PredictPriceView, ConservationAlertView,
                     OrderStatusUpdateView, DemandForecastView, UserProfileView, AdminOrderListView,
                     ProfileUpdateView, SmartRecommendationsView, AdminDashboardView, AdminUserListView,
-                    AdminUserDetailView, AdminResetPasswordView, AdminToggleUserStatusView, AdminAuditLogView)
+                    AdminUserDetailView, AdminResetPasswordView, AdminToggleUserStatusView, AdminAuditLogView,
+                    DeviceTokenView)
 
 
 
@@ -21,6 +22,7 @@ urlpatterns = [
     path('alerts/', ConservationAlertView.as_view(), name='conservation_alerts'),
     path('forecast/', DemandForecastView.as_view(), name='demand_forecast'),
     path('smart/', SmartRecommendationsView.as_view(), name='smart_recommendations'),
+    path('device-token/', DeviceTokenView.as_view(), name='device_token'),
 
 
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),

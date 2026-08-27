@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { ScrollText, Search, Filter } from 'lucide-react'
 
-const API = 'http://10.28.92.239:8000/api/auth'
+const API = 'https://samaki-smart-ai.onrender.com/api/auth'
 
 export default function AdminAuditLogPage({ token }) {
   const [logs, setLogs] = useState([])

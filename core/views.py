@@ -9,6 +9,7 @@ from .ml.forecast import forecast_7_days
 from datetime import date, timedelta
 from django.utils import timezone
 from django.db.models import Count, Sum, Q
+from .models import DeviceToken
 
 
 
@@ -46,9 +47,24 @@ class HotelOrderListCreateView(generics.ListCreateAPIView):
             return HotelOrderCreateSerializer
         return HotelOrderSerializer
 
-
     def perform_create(self, serializer):
         order = serializer.save(buyer=self.request.user)
+
+        # Send push to all fishermen
+        from .fcm_utils import send_push_notification
+
+        fishermen_tokens = DeviceToken.objects.filter(
+            user__role='fisherman'
+        ).values_list('fcm_token', flat=True)
+
+        send_push_notification(
+            list(fishermen_tokens),
+            title='New Fish Order! 🐟',
+            body=f'{order.species.name_en} • {order.quantity_kg}kg • Delivery: {order.delivery_date}',
+            data={'order_id': str(order.id), 'type': 'new_order'}
+        )
+
+        # Log
         AuditLog.objects.create(
             user=self.request.user,
             action='CREATE_ORDER',
@@ -328,3 +344,19 @@ class AdminAuditLogView(generics.ListAPIView):
 
     def get_serializer_class(self):
         return AdminAuditLogSerializer
+
+
+class DeviceTokenView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        token = request.data.get('fcm_token')
+        if not token:
+            return Response({'error': 'fcm_token required'}, status=400)
+
+        DeviceToken.objects.update_or_create(
+            user=request.user,
+            fcm_token=token,
+            defaults={'fcm_token': token}
+        )
+        return Response({'message': 'Token registered'})

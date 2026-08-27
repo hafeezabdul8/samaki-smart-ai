@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // Change this to your PC's IP when running on phone
-  static const String baseUrl = 'http://10.28.92.239:8000/api/auth';
+  static const String baseUrl = 'https://samaki-smart-ai.onrender.com/api/auth';
 
   String? token;
 

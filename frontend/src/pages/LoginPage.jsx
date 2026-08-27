@@ -2,7 +2,7 @@ import { useState } from 'react'
 import axios from 'axios'
 import { Fish, Anchor, Sparkles, ChevronRight, Activity, UserPlus, Phone, Key, Shield, Eye, EyeOff } from 'lucide-react'
 
-const API = 'http://10.28.92.239:8000/api/auth'
+const API = 'https://samaki-smart-ai.onrender.com/api/auth'
 
 export default function LoginPage({ onLogin }) {
   const [mode, setMode] = useState('login')

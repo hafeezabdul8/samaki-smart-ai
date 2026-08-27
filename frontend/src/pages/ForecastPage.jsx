@@ -3,7 +3,7 @@ import axios from 'axios'
 import { TrendingUp, MapPin, Sparkles, Calendar, Cloud, Wind, Droplets } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
-const API = 'http://10.28.92.239:8000/api/auth'
+const API = 'https://samaki-smart-ai.onrender.com/api/auth'
 
 const speciesList = [
   'Yellowfin Tuna', 'Octopus/Squid', 'Lobster', 'Kingfish', 'Snapper',

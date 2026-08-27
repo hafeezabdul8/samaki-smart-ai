@@ -63,11 +63,21 @@ class _AlertsScreenState extends State<AlertsScreen> {
     if (name.contains('Tuna') || name.contains('Jodari')) return '🐟';
     if (name.contains('Parrot') || name.contains('Pono')) return '🐠';
     if (name.contains('Snapper') || name.contains('Changu')) return '🐡';
-    if (name.contains('Sardine') || name.contains('Dagaa')) return '🐟';
-    if (name.contains('King') || name.contains('Nguru')) return '🦈';
-    if (name.contains('Octopus') || name.contains('Pweza')) return '🐙';
-    if (name.contains('Rabbit') || name.contains('Tasi')) return '🐠';
-    if (name.contains('Shrimp') || name.contains('Kamba')) return '🦐';
+    if (name.contains('Sardine') || name.contains('Dagaa') || name.contains('Anchovy')) return '🐟';
+    if (name.contains('King') || name.contains('Nguru')) return '👑';
+    if (name.contains('Octopus') || name.contains('Pweza') || name.contains('Squid') || name.contains('Ngisi')) return '🐙';
+    if (name.contains('Rabbit') || name.contains('Tasi')) return '🐰';
+    if (name.contains('Lobster') || name.contains('Kamba')) return '🦞';
+    if (name.contains('Grouper') || name.contains('Chewa')) return '🐟';
+    if (name.contains('Sword') || name.contains('Nduaro')) return '⚔️';
+    if (name.contains('Mackerel') || name.contains('Vibua')) return '🐟';
+    if (name.contains('Barracuda') || name.contains('Mzia')) return '🐊';
+    if (name.contains('Shark') || name.contains('Papa') || name.contains('Ray') || name.contains('Taa')) return '🦈';
+    if (name.contains('Goat') || name.contains('Mkundaji')) return '🐐';
+    if (name.contains('Surgeon') || name.contains('Puju') || name.contains('Kangaja')) return '🐠';
+    if (name.contains('Mullet') || name.contains('Mkizi')) return '🐟';
+    if (name.contains('Trevally') || name.contains('Kolekole') || name.contains('Karambisi')) return '🐟';
+    if (name.contains('Sardine') || name.contains('Saradini')) return '🐟';
     return '🐟';
   }
 
@@ -78,7 +88,15 @@ class _AlertsScreenState extends State<AlertsScreen> {
         species['name_sw'].toString().isNotEmpty) {
       return species['name_sw'];
     }
-    return species['name_en'] ?? '';
+    return (species['name_en'] ?? '').replaceAll(RegExp(r' *\([^)]*\)'), '');
+  }
+
+  String _getSubtitle(dynamic species, LanguageProvider lang) {
+    final isSwahili = lang.locale.languageCode == 'sw';
+    if (isSwahili) {
+      return species['name_en'] ?? '';
+    }
+    return '🇹🇿 ${species['name_sw']}';
   }
 
   String _getNote(dynamic alert, LanguageProvider lang) {
@@ -86,6 +104,42 @@ class _AlertsScreenState extends State<AlertsScreen> {
     if (note.isEmpty) return '';
 
     final translations = {
+      'Common reef fish. Sustainable catch. High market demand.':
+          'Samaki wa kawaida wa miamba. Uvuvi endelevu. Mahitaji makubwa sokoni.',
+      'Critical for reef health. Overfished. Consider Snapper as alternative.':
+          'Muhimu kwa afya ya miamba. Wamevuliwa kupita kiasi. Fikiria Changu kama mbadala.',
+      'Abundant. Sustainable catch. Popular in hotels and restaurants.':
+          'Wapo wengi. Uvuvi endelevu. Maarufu katika hoteli na migahawa.',
+      'High value. Monitor catch levels. Important for tourism sector.':
+          'Thamani kubwa. Fuatilia viwango vya uvuvi. Muhimu kwa sekta ya utalii.',
+      'Common in local markets. Stable population.':
+          'Wanapatikana katika masoko ya ndani. Idadi imara.',
+      'Reef fish. Sustainable. Good for local consumption.':
+          'Samaki wa miamba. Endelevu. Nzuri kwa matumizi ya ndani.',
+      'Coastal species. Abundant. Important for food security.':
+          'Spishi za pwani. Wapo wengi. Muhimu kwa usalama wa chakula.',
+      'Very abundant. Key food source and export product.':
+          'Wapo wengi sana. Chanzo muhimu cha chakula na bidhaa ya kuuza nje.',
+      'Pelagic species. Abundant. Good for local markets.':
+          'Spishi za bahari kuu. Wapo wengi. Nzuri kwa masoko ya ndani.',
+      'Pelagic fish. Stable population. Popular in local cuisine.':
+          'Samaki wa bahari kuu. Idadi imara. Maarufu katika vyakula vya ndani.',
+      'Reef predator. Monitor stock levels.':
+          'Mwindaji wa miamba. Fuatilia viwango vya akiba.',
+      'Popular export fish. High demand. Avoid catching juveniles.':
+          'Samaki maarufu wa kuuza nje. Mahitaji makubwa. Epuka kuvua wadogo.',
+      'Deep sea species. High value for export.':
+          'Spishi za bahari kuu. Thamani kubwa kwa mauzo ya nje.',
+      'High value pelagic fish. Monitor catch levels.':
+          'Samaki wa bahari kuu wenye thamani kubwa. Fuatilia viwango vya uvuvi.',
+      'Predatory fish. Seasonal migration.':
+          'Samaki mwindaji. Uhamaji wa msimu.',
+      'Protected species. Critical for marine ecosystem.':
+          'Spishi zilizohifadhiwa. Muhimu kwa mfumo wa ikolojia ya baharini.',
+      'Important for export. Seasonal limits apply.':
+          'Muhimu kwa mauzo ya nje. Vipimo vya msimu vinatumika.',
+      'High value export product. Premium pricing.':
+          'Bidhaa ya thamani kubwa ya kuuza nje. Bei ya juu.',
       'Popular export fish. High demand. Avoid catching juveniles.':
           'Samaki maarufu wa kuuza nje. Mahitaji makubwa. Epuka kuvua wadogo.',
       'High value. Monitor catch levels.':
@@ -111,6 +165,23 @@ class _AlertsScreenState extends State<AlertsScreen> {
     return note;
   }
 
+  String _getSectionTitle(LanguageProvider lang) {
+    return lang.t('Conservation Alerts', 'Tahadhari za Uhifadhi');
+  }
+
+  String _getRestrictedCount(LanguageProvider lang) {
+    final count = _alerts.where((a) => a['status'] == 'red').length;
+    return '$count ${lang.t('Restricted', 'Zimezuiliwa')}';
+  }
+
+  String _getLoadingText(LanguageProvider lang) {
+    return lang.t('Loading alerts...', 'Inapakia tahadhari...');
+  }
+
+  String _getEmptyText(LanguageProvider lang) {
+    return lang.t('No alerts found', 'Hakuna tahadhari zilizopatikana');
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
@@ -126,7 +197,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
             pinned: true,
             backgroundColor: AppTheme.primaryBg,
             title: Text(
-              lang.t('Conservation Alerts', 'Tahadhari za Uhifadhi'),
+              _getSectionTitle(lang),
               style: GoogleFonts.inter(
                   fontWeight: FontWeight.w700, color: Colors.white),
             ),
@@ -142,7 +213,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       color: AppTheme.redAccent.withValues(alpha: 0.3)),
                 ),
                 child: Text(
-                  '${_alerts.where((a) => a['status'] == 'red').length} ${lang.t('Restricted', 'Zimezuiliwa')}',
+                  _getRestrictedCount(lang),
                   style: GoogleFonts.inter(
                     color: AppTheme.redAccent,
                     fontSize: 11,
@@ -157,135 +228,151 @@ class _AlertsScreenState extends State<AlertsScreen> {
             sliver: _loading
                 ? SliverFillRemaining(
                     child: Center(
-                      child: CircularProgressIndicator(
-                          color: AppTheme.cyanAccent),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(color: AppTheme.cyanAccent),
+                          const SizedBox(height: 12),
+                          Text(
+                            _getLoadingText(lang),
+                            style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                          ),
+                        ],
+                      ),
                     ),
                   )
-                : SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final alert = _alerts[index];
-                        final color = _statusColor(alert['status']);
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: AppTheme.glassDecoration.copyWith(
-                            border: Border.all(
-                                color: color.withValues(alpha: 0.3)),
+                : _alerts.isEmpty
+                    ? SliverFillRemaining(
+                        child: Center(
+                          child: Text(
+                            _getEmptyText(lang),
+                            style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                        ),
+                      )
+                    : SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final alert = _alerts[index];
+                            final color = _statusColor(alert['status']);
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: AppTheme.glassDecoration.copyWith(
+                                border: Border.all(
+                                    color: color.withValues(alpha: 0.3)),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      _getIcon(alert['name_en']),
-                                      style: const TextStyle(fontSize: 32),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            _getName(alert, lang),
-                                            style: GoogleFonts.inter(
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            lang.locale.languageCode == 'sw'
-                                                ? alert['name_en'] ?? ''
-                                                : '🇹🇿 ${alert['name_sw']}',
-                                            style: TextStyle(
-                                              color: Colors.grey.shade600,
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: color.withValues(alpha: 0.1),
-                                        borderRadius:
-                                            BorderRadius.circular(12),
-                                        border: Border.all(
-                                            color: color
-                                                .withValues(alpha: 0.3)),
-                                      ),
-                                      child: Text(
-                                        _statusLabel(alert['status'], lang),
-                                        style: TextStyle(
-                                          color: color,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 1,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (alert['note'] != null &&
-                                    alert['note'].toString().isNotEmpty) ...[
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: color.withValues(alpha: 0.05),
-                                      borderRadius:
-                                          BorderRadius.circular(12),
-                                      border: Border.all(
-                                          color: color
-                                              .withValues(alpha: 0.15)),
-                                    ),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                    Row(
                                       children: [
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 2),
-                                          child: Icon(
-                                            color == AppTheme.redAccent
-                                                ? Icons.block
-                                                : color == AppTheme.amberAccent
-                                                    ? Icons.warning_amber_rounded
-                                                    : Icons.check_circle_outline,
-                                            color: color,
-                                            size: 16,
+                                        Text(
+                                          _getIcon(alert['name_en']),
+                                          style: const TextStyle(fontSize: 32),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                _getName(alert, lang),
+                                                style: GoogleFonts.inter(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                _getSubtitle(alert, lang),
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade600,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: color.withValues(alpha: 0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
+                                                color: color
+                                                    .withValues(alpha: 0.3)),
+                                          ),
                                           child: Text(
-                                            _getNote(alert, lang),
+                                            _statusLabel(alert['status'], lang),
                                             style: TextStyle(
-                                              color: Colors.grey.shade400,
-                                              fontSize: 13,
-                                              height: 1.5,
+                                              color: color,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: 1,
                                             ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                      childCount: _alerts.length,
-                    ),
-                  ),
+                                    if (alert['note'] != null &&
+                                        alert['note'].toString().isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: color.withValues(alpha: 0.05),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: color
+                                                  .withValues(alpha: 0.15)),
+                                        ),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.only(top: 2),
+                                              child: Icon(
+                                                color == AppTheme.redAccent
+                                                    ? Icons.block
+                                                    : color == AppTheme.amberAccent
+                                                        ? Icons.warning_amber_rounded
+                                                        : Icons.check_circle_outline,
+                                                color: color,
+                                                size: 16,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                _getNote(alert, lang),
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade400,
+                                                  fontSize: 13,
+                                                  height: 1.5,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                          childCount: _alerts.length,
+                        ),
+                      ),
           ),
         ],
       ),

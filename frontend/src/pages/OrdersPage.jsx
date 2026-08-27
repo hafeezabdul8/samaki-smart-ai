@@ -2,7 +2,7 @@ import { useState } from 'react'
 import axios from 'axios'
 import { Calendar, ShoppingCart, Clock, Phone, MapPin, Hotel, User, CheckCircle } from 'lucide-react'
 
-const API = 'http://10.28.92.239:8000/api/auth'
+const API = 'https://samaki-smart-ai.onrender.com/api/auth'
 
 const orderStatusConfig = {
   pending: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20' },
