@@ -5,6 +5,7 @@ __pycache__/
 *.pyo
 .env
 db.sqlite3
+firebase-credentials.json
 
 # Node
 frontend/node_modules/
@@ -17,6 +18,7 @@ fisher_app/.flutter-plugins
 fisher_app/.flutter-plugins-dependencies
 fisher_app/.packages
 fisher_app/android/.gradle/
+fisher_app/android/app/build/
 fisher_app/android/app/google-services.json
 
 # IDE
@@ -29,6 +31,8 @@ fisher_app/android/app/google-services.json
 .DS_Store
 Thumbs.db
 
-# Data files (large CSVs)
+# Data files
 *.csv
+*.apk
+*.bin
 !requirements.txt
