@@ -12,8 +12,6 @@ from django.db.models import Count, Sum, Q
 from .models import DeviceToken
 
 
-
-
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [permissions.AllowAny]
@@ -28,10 +26,12 @@ class RegisterView(generics.CreateAPIView):
             record_id=user.id
         )
 
+
 class PriceFeedView(generics.ListAPIView):
     queryset = MarketPrice.objects.select_related('species').order_by('-recorded_at')[:50]
     permission_classes = [permissions.AllowAny]
     serializer_class = MarketPriceSerializer
+
 
 class HotelOrderListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -50,19 +50,23 @@ class HotelOrderListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         order = serializer.save(buyer=self.request.user)
 
-        # Send push to all fishermen
-        from .fcm_utils import send_push_notification
+        # Try to send push notification (non-blocking)
+        try:
+            from .fcm_utils import send_push_notification
 
-        fishermen_tokens = DeviceToken.objects.filter(
-            user__role='fisherman'
-        ).values_list('fcm_token', flat=True)
+            fishermen_tokens = DeviceToken.objects.filter(
+                user__role='fisherman'
+            ).values_list('fcm_token', flat=True)
 
-        send_push_notification(
-            list(fishermen_tokens),
-            title='New Fish Order! 🐟',
-            body=f'{order.species.name_en} • {order.quantity_kg}kg • Delivery: {order.delivery_date}',
-            data={'order_id': str(order.id), 'type': 'new_order'}
-        )
+            if fishermen_tokens:
+                send_push_notification(
+                    list(fishermen_tokens),
+                    title='New Fish Order! 🐟',
+                    body=f'{order.species.name_en} • {order.quantity_kg}kg • Delivery: {order.delivery_date}',
+                    data={'order_id': str(order.id), 'type': 'new_order'}
+                )
+        except Exception as e:
+            print(f'FCM notification error: {e}')
 
         # Log
         AuditLog.objects.create(
@@ -71,6 +75,7 @@ class HotelOrderListCreateView(generics.ListCreateAPIView):
             table_name='HotelOrder',
             record_id=order.id
         )
+
 
 class PredictPriceView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -98,6 +103,7 @@ class PredictPriceView(APIView):
             })
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ConservationAlertView(generics.ListAPIView):
     queryset = FishSpecies.objects.all().order_by('status', 'name_en')
@@ -128,7 +134,6 @@ class OrderStatusUpdateView(APIView):
             return Response({'error': f'Order is already {order.status}'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Record who accepted
         if new_status == 'accepted':
             order.accepted_by = request.user
 
@@ -143,6 +148,7 @@ class OrderStatusUpdateView(APIView):
         )
 
         return Response(HotelOrderSerializer(order).data)
+
 
 class DemandForecastView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -172,6 +178,9 @@ class UserProfileView(APIView):
             'username': request.user.username,
             'role': request.user.role,
             'phone': request.user.phone,
+            'location': request.user.location,
+            'market': request.user.market,
+            'hotel_name': request.user.hotel_name,
         })
 
 
@@ -223,12 +232,10 @@ class SmartRecommendationsView(APIView):
             return Response({
                 'current_season': get_season(date.today().month),
                 'recommendations': recommendations,
-                'ai_insight': 'Prices typically rise in Kusi due to reduced fishing activity from rough seas. Consider targeting high-value species during this period.'
+                'ai_insight': 'Prices typically rise in Kusi due to reduced fishing activity from rough seas.'
             })
         except Exception as e:
             return Response({'error': str(e)}, status=400)
-
-## ADMIN
 
 
 class AdminDashboardView(APIView):
@@ -293,8 +300,7 @@ class AdminUserDetailView(APIView):
                 'failed_login_attempts': user.failed_login_attempts,
                 'date_joined': user.date_joined,
                 'total_orders': orders,
-                'recent_activity': [{'action': log.action, 'table': log.table_name, 'time': log.timestamp} for log in
-                                    audit_logs]
+                'recent_activity': [{'action': log.action, 'table': log.table_name, 'time': log.timestamp} for log in audit_logs]
             })
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)

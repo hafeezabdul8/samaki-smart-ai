@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_provider.dart';
+import '../services/api_service.dart';
 import '../services/language_provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -46,10 +48,24 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _submit() async {
     final auth = context.read<AuthProvider>();
+    final api = context.read<ApiService>();
     final lang = context.read<LanguageProvider>();
     try {
       if (_isLogin) {
         await auth.login(_usernameCtrl.text, _passwordCtrl.text);
+        
+        // Register FCM token after successful login
+        try {
+          final messaging = FirebaseMessaging.instance;
+          final fcmToken = await messaging.getToken();
+          if (fcmToken != null) {
+            api.token = auth.token;
+            await api.registerDeviceToken(fcmToken);
+            debugPrint('FCM token registered: $fcmToken');
+          }
+        } catch (e) {
+          debugPrint('FCM registration failed: $e');
+        }
       } else {
         await auth.register(
           _usernameCtrl.text,
@@ -99,7 +115,6 @@ class _LoginScreenState extends State<LoginScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Language Toggle
                     Align(
                       alignment: Alignment.topRight,
                       child: GestureDetector(
@@ -130,7 +145,6 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // Logo
                     Container(
                       width: 100,
                       height: 100,
@@ -169,7 +183,6 @@ class _LoginScreenState extends State<LoginScreen>
                       style: GoogleFonts.inter(color: Colors.blueGrey.shade300, fontSize: 14),
                     ),
                     const SizedBox(height: 40),
-                    // Auth Card
                     Container(
                       decoration: AppTheme.glassDecoration,
                       padding: const EdgeInsets.all(24),

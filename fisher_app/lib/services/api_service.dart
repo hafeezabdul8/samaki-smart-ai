@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
 
 class ApiService {
   // Change this to your PC's IP when running on phone
@@ -115,5 +116,19 @@ class ApiService {
       body: jsonEncode({'status': status}),
     );
     if (res.statusCode != 200) throw Exception('Failed to update order');
+  }
+
+    Future<void> registerDeviceToken(String fcmToken) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/device-token/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'fcm_token': fcmToken}),
+    );
+    if (res.statusCode == 200) {
+      debugPrint('Device token registered');
+    }
   }
 }
