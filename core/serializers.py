@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, MarketPrice, FishSpecies, HotelOrder, AuditLog
+from .models import User, MarketPrice, FishSpecies, HotelOrder, AuditLog, ChatMessage, OrderMedia, ChatRoom
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -88,3 +88,35 @@ class AdminAuditLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuditLog
         fields = ('id', 'username', 'action', 'table_name', 'record_id', 'timestamp')
+
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.CharField(source='sender.username', read_only=True)
+    sender_role = serializers.CharField(source='sender.role', read_only=True)
+
+    class Meta:
+        model = ChatMessage
+        fields = ('id', 'sender', 'sender_name', 'sender_role', 'message', 'created_at')
+        read_only_fields = ('sender',)
+
+
+class OrderMediaSerializer(serializers.ModelSerializer):
+    uploader_name = serializers.CharField(source='uploader.username', read_only=True)
+
+    class Meta:
+        model = OrderMedia
+        fields = ('id', 'uploader', 'uploader_name', 'media_type', 'file_url', 'created_at')
+        read_only_fields = ('uploader',)
+
+
+class ChatRoomSerializer(serializers.ModelSerializer):
+    messages = ChatMessageSerializer(many=True, read_only=True)
+    media = OrderMediaSerializer(many=True, read_only=True)
+    order_id = serializers.IntegerField(source='order.id', read_only=True)
+    buyer_name = serializers.CharField(source='order.buyer.username', read_only=True)
+    fisherman_name = serializers.CharField(source='order.accepted_by.username', read_only=True)
+
+    class Meta:
+        model = ChatRoom
+        fields = ('id', 'order_id', 'buyer_name', 'fisherman_name', 'messages', 'media', 'created_at')

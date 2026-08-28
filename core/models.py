@@ -122,3 +122,32 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.action} on {self.table_name} at {self.timestamp}"
+
+
+class ChatRoom(models.Model):
+    order = models.OneToOneField(HotelOrder, on_delete=models.CASCADE, related_name='chat_room')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'Chat for Order #{self.order.id}'
+
+
+class ChatMessage(models.Model):
+    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'{self.sender.username}: {self.message[:30]}'
+
+
+class OrderMedia(models.Model):
+    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='media')
+    uploader = models.ForeignKey(User, on_delete=models.CASCADE)
+    media_type = models.CharField(max_length=10, choices=[('image', 'Image'), ('video', 'Video')])
+    file_url = models.URLField()
+    created_at = models.DateTimeField(auto_now_add=True)

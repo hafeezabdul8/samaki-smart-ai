@@ -4,7 +4,7 @@ from .views import (RegisterView, PriceFeedView, HotelOrderListCreateView, Predi
                     OrderStatusUpdateView, DemandForecastView, UserProfileView, AdminOrderListView,
                     ProfileUpdateView, SmartRecommendationsView, AdminDashboardView, AdminUserListView,
                     AdminUserDetailView, AdminResetPasswordView, AdminToggleUserStatusView, AdminAuditLogView,
-                    DeviceTokenView)
+                    DeviceTokenView, ChatRoomView, ChatMessagesView, SendMessageView, UploadMediaView)
 
 
 
@@ -23,6 +23,10 @@ urlpatterns = [
     path('forecast/', DemandForecastView.as_view(), name='demand_forecast'),
     path('smart/', SmartRecommendationsView.as_view(), name='smart_recommendations'),
     path('device-token/', DeviceTokenView.as_view(), name='device_token'),
+    path('chat/orders/<int:order_id>/room/', ChatRoomView.as_view(), name='chat_room'),
+    path('chat/orders/<int:order_id>/messages/', ChatMessagesView.as_view(), name='chat_messages'),
+    path('chat/orders/<int:order_id>/send/', SendMessageView.as_view(), name='send_message'),
+    path('chat/orders/<int:order_id>/media/', UploadMediaView.as_view(), name='upload_media'),
 
 
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),

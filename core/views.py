@@ -1,15 +1,15 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from .serializers import RegisterSerializer, MarketPriceSerializer, HotelOrderSerializer, HotelOrderCreateSerializer, \
-    FishSpeciesDetailSerializer, AdminAuditLogSerializer, AdminUserSerializer
-from .models import User, MarketPrice, HotelOrder, FishSpecies, AuditLog
+    FishSpeciesDetailSerializer, AdminAuditLogSerializer, AdminUserSerializer, ChatMessageSerializer, \
+    OrderMediaSerializer, ChatRoomSerializer
+from .models import User, MarketPrice, HotelOrder, FishSpecies, AuditLog, ChatRoom, ChatMessage, OrderMedia, DeviceToken
 from rest_framework.views import APIView
 from .ml.predict import predict_price, get_smart_recommendations, get_season
 from .ml.forecast import forecast_7_days
 from datetime import date, timedelta
 from django.utils import timezone
 from django.db.models import Count, Sum, Q
-from .models import DeviceToken
 
 
 class RegisterView(generics.CreateAPIView):
@@ -366,3 +366,134 @@ class DeviceTokenView(APIView):
             defaults={'fcm_token': token}
         )
         return Response({'message': 'Token registered'})
+
+class ChatRoomView(APIView):
+    """Get or create chat room for an order."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, order_id):
+        try:
+            order = HotelOrder.objects.get(id=order_id)
+        except HotelOrder.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+
+        # Only buyer or accepted fisherman can access
+        if request.user != order.buyer and request.user != order.accepted_by:
+            return Response({'error': 'Unauthorized'}, status=403)
+
+        chat_room, created = ChatRoom.objects.get_or_create(order=order)
+        return Response(ChatRoomSerializer(chat_room).data)
+
+
+class ChatMessagesView(APIView):
+    """Get all messages for a chat room."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, order_id):
+        try:
+            chat_room = ChatRoom.objects.get(order_id=order_id)
+        except ChatRoom.DoesNotExist:
+            return Response([], status=200)
+
+        if request.user != chat_room.order.buyer and request.user != chat_room.order.accepted_by:
+            return Response({'error': 'Unauthorized'}, status=403)
+
+        messages = ChatMessage.objects.filter(room=chat_room)
+        media = OrderMedia.objects.filter(room=chat_room)
+        return Response({
+            'messages': ChatMessageSerializer(messages, many=True).data,
+            'media': OrderMediaSerializer(media, many=True).data,
+        })
+
+
+class SendMessageView(APIView):
+    """Send a chat message."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, order_id):
+        try:
+            order = HotelOrder.objects.get(id=order_id)
+        except HotelOrder.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+
+        if request.user != order.buyer and request.user != order.accepted_by:
+            return Response({'error': 'Unauthorized'}, status=403)
+
+        message_text = request.data.get('message', '').strip()
+        if not message_text:
+            return Response({'error': 'Message cannot be empty'}, status=400)
+
+        chat_room, created = ChatRoom.objects.get_or_create(order=order)
+
+        message = ChatMessage.objects.create(
+            room=chat_room,
+            sender=request.user,
+            message=message_text
+        )
+
+        # Notify the other party via FCM
+        try:
+            recipient = order.buyer if request.user == order.accepted_by else order.accepted_by
+            if recipient:
+                from .fcm_utils import send_push_notification
+                recipient_tokens = DeviceToken.objects.filter(user=recipient).values_list('fcm_token', flat=True)
+                if recipient_tokens:
+                    send_push_notification(
+                        list(recipient_tokens),
+                        title='New Message 💬',
+                        body=f'{request.user.username}: {message_text[:50]}',
+                        data={'order_id': str(order.id), 'type': 'chat_message'}
+                    )
+        except Exception as e:
+            print(f'FCM chat notification error: {e}')
+
+        return Response(ChatMessageSerializer(message).data, status=201)
+
+
+class UploadMediaView(APIView):
+    """Upload image/video for an order chat."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, order_id):
+        try:
+            order = HotelOrder.objects.get(id=order_id)
+        except HotelOrder.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+
+        if request.user != order.buyer and request.user != order.accepted_by:
+            return Response({'error': 'Unauthorized'}, status=403)
+
+        file = request.FILES.get('file')
+        media_type = request.data.get('media_type', 'image')
+
+        if not file:
+            return Response({'error': 'File is required'}, status=400)
+
+        # Save file locally
+        import uuid
+        import os
+        from django.conf import settings
+
+        ext = os.path.splitext(file.name)[1]
+        filename = f'{uuid.uuid4().hex}{ext}'
+        upload_dir = os.path.join(settings.BASE_DIR, 'media', 'chat')
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, filename)
+
+        with open(file_path, 'wb+') as dest:
+            for chunk in file.chunks():
+                dest.write(chunk)
+
+        chat_room, created = ChatRoom.objects.get_or_create(order=order)
+
+        # Build URL
+        file_url = f'/media/chat/{filename}'
+
+        media = OrderMedia.objects.create(
+            room=chat_room,
+            uploader=request.user,
+            media_type=media_type,
+            file_url=file_url
+        )
+
+        return Response(OrderMediaSerializer(media).data, status=201)
