@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/auth_provider.dart';
 import '../services/language_provider.dart';
+import 'chat_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -108,11 +109,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (name.contains('Tuna') || name.contains('Jodari')) return '🐟';
     if (name.contains('Parrot') || name.contains('Pono')) return '🐠';
     if (name.contains('Snapper') || name.contains('Changu')) return '🐡';
-    if (name.contains('Sardine') || name.contains('Dagaa')) return '🐟';
-    if (name.contains('King') || name.contains('Nguru')) return '🦈';
-    if (name.contains('Octopus') || name.contains('Pweza')) return '🐙';
-    if (name.contains('Rabbit') || name.contains('Tasi')) return '🐠';
-    if (name.contains('Shrimp') || name.contains('Kamba')) return '🦐';
+    if (name.contains('Sardine') || name.contains('Dagaa') || name.contains('Anchovy')) return '🐟';
+    if (name.contains('King') || name.contains('Nguru')) return '👑';
+    if (name.contains('Octopus') || name.contains('Pweza') || name.contains('Squid')) return '🐙';
+    if (name.contains('Rabbit') || name.contains('Tasi')) return '🐰';
+    if (name.contains('Lobster') || name.contains('Kamba')) return '🦞';
+    if (name.contains('Grouper') || name.contains('Chewa')) return '🐟';
+    if (name.contains('Sword') || name.contains('Nduaro')) return '⚔️';
+    if (name.contains('Mackerel') || name.contains('Vibua')) return '🐟';
+    if (name.contains('Barracuda') || name.contains('Mzia')) return '🐊';
+    if (name.contains('Shark') || name.contains('Papa') || name.contains('Ray')) return '🦈';
+    if (name.contains('Goat') || name.contains('Mkundaji')) return '🐐';
+    if (name.contains('Surgeon') || name.contains('Puju')) return '🐠';
+    if (name.contains('Mullet') || name.contains('Mkizi')) return '🐟';
+    if (name.contains('Trevally') || name.contains('Kolekole')) return '🐟';
     return '🐟';
   }
 
@@ -121,6 +131,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final lang = context.watch<LanguageProvider>();
     final user = context.watch<AuthProvider>().user;
     final isFisherman = user?['role'] == 'fisherman';
+    final isBuyer = user?['role'] == 'hotel_buyer';
     final pendingCount = _orders.where((o) => o['status'] == 'pending').length;
 
     return RefreshIndicator(
@@ -134,7 +145,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
             pinned: true,
             backgroundColor: AppTheme.primaryBg,
             title: Text(
-              lang.t('Demand Alerts', 'Tahadhari za Mahitaji'),
+              isFisherman
+                  ? lang.t('Demand Alerts', 'Tahadhari za Mahitaji')
+                  : lang.t('My Orders', 'Maagizo Yangu'),
               style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white),
             ),
             actions: [
@@ -208,7 +221,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Header: Order # and Status
                                     Row(
                                       children: [
                                         Text(
@@ -257,8 +269,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
                                     const SizedBox(height: 14),
 
-                                    // Buyer Info (visible to fishermen)
-                                    if (isFisherman) ...[
+                                    // Buyer Info - shown to everyone
+                                    ...[
                                       _sectionTitle(lang.t('🏨 Buyer Information', '🏨 Taarifa za Mnunuzi'), color),
                                       const SizedBox(height: 8),
                                       Container(
@@ -270,7 +282,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                         ),
                                         child: Column(
                                           children: [
-                                            _infoRow(lang.t('Hotel', 'Hoteli'), order['buyer_hotel'] ?? order['buyer_name'] ?? '—', '🏨'),
+                                            _infoRow(lang.t('Buyer', 'Mnunuzi'), order['buyer_name'] ?? '—', '👤'),
+                                            const SizedBox(height: 6),
+                                            _infoRow(lang.t('Hotel', 'Hoteli'), order['buyer_hotel'] ?? '—', '🏨'),
                                             const SizedBox(height: 6),
                                             _infoRow(lang.t('Contact', 'Mawasiliano'), order['buyer_phone'] ?? '—', '📞'),
                                             const SizedBox(height: 6),
@@ -281,7 +295,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                       const SizedBox(height: 12),
                                     ],
 
-                                    // Fisherman Info (visible to all, shows after acceptance)
+                                    // Fisherman Info - shown to everyone after acceptance
                                     if (hasAcceptedBy) ...[
                                       _sectionTitle(lang.t('🎣 Accepted By', '🎣 Amekubaliwa Na'), AppTheme.emeraldAccent),
                                       const SizedBox(height: 8),
@@ -305,7 +319,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                       const SizedBox(height: 12),
                                     ],
 
-                                    // Order Details
                                     _sectionTitle(lang.t('📦 Order Details', '📦 Maelezo ya Agizo'), color),
                                     const SizedBox(height: 8),
                                     Container(
@@ -329,7 +342,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                       ),
                                     ),
 
-                                    // Action Buttons
                                     if (status == 'pending' && isFisherman) ...[
                                       const SizedBox(height: 14),
                                       GestureDetector(
@@ -363,8 +375,50 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                       ),
                                     ],
 
+                                    if (status == 'accepted' || status == 'fulfilled') ...[
+                                      const SizedBox(height: 8),
+                                      GestureDetector(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ChatScreen(
+                                                orderId: order['id'],
+                                                otherPartyName: isFisherman
+                                                    ? (order['buyer_name'] ?? 'Buyer')
+                                                    : (order['accepted_by_name'] ?? 'Fisherman'),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.cyanAccent.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(14),
+                                            border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(Icons.chat_bubble_outline, color: AppTheme.cyanAccent, size: 16),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                lang.t(
+                                                  'Chat with ${isFisherman ? 'Buyer' : 'Fisherman'}',
+                                                  'Ongea na ${isFisherman ? 'Mnunuzi' : 'Mvuvi'}',
+                                                ),
+                                                style: GoogleFonts.inter(color: AppTheme.cyanAccent, fontWeight: FontWeight.w600, fontSize: 13),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+
                                     if (status == 'accepted' && isFisherman) ...[
-                                      const SizedBox(height: 14),
+                                      const SizedBox(height: 8),
                                       GestureDetector(
                                         onTap: () => _updateStatus(order['id'], 'fulfilled'),
                                         child: Container(
@@ -396,7 +450,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                       ),
                                     ],
 
-                                    // Delivered badge
                                     if (status == 'fulfilled') ...[
                                       const SizedBox(height: 14),
                                       Container(

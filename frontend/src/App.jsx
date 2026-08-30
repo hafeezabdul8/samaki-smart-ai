@@ -74,7 +74,6 @@ export default function App() {
 
   const isAdmin = user.role === 'admin'
 
-  // Admin user detail view
   if (isAdmin && viewingUserId) {
     return (
       <div className="min-h-screen bg-[#0a0f1e]">
@@ -90,7 +89,7 @@ export default function App() {
       {activeTab === 'dashboard' && !isAdmin && <DashboardPage user={user} prices={prices} alerts={alerts} orders={orders} adminOrders={adminOrders} />}
       {activeTab === 'dashboard' && isAdmin && <AdminDashboardPage token={token} />}
       {activeTab === 'users' && isAdmin && <AdminUsersPage token={token} onViewUser={(id) => setViewingUserId(id)} />}
-      {activeTab === 'orders' && !isAdmin && <OrdersPage token={token} alerts={alerts} orders={orders} onOrderCreated={fetchOrders} onForecast={getForecast} />}
+      {activeTab === 'orders' && !isAdmin && <OrdersPage token={token} alerts={alerts} orders={orders} user={user} onOrderCreated={fetchOrders} onForecast={getForecast} />}
       {activeTab === 'orders' && isAdmin && <AdminPage tab="orders" adminOrders={adminOrders} alerts={alerts} />}
       {activeTab === 'species' && isAdmin && <AdminPage tab="species" adminOrders={adminOrders} alerts={alerts} />}
       {activeTab === 'audit' && isAdmin && <AdminAuditLogPage token={token} />}

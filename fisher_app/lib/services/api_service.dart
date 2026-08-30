@@ -131,4 +131,26 @@ class ApiService {
       debugPrint('Device token registered');
     }
   }
+
+    Future<Map<String, dynamic>> getChatMessages(int orderId) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/chat/orders/$orderId/messages/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (res.statusCode == 200) return jsonDecode(res.body);
+    throw Exception('Failed to load messages');
+  }
+
+  Future<Map<String, dynamic>> sendMessage(int orderId, String message) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/chat/orders/$orderId/send/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'message': message}),
+    );
+    if (res.statusCode == 201) return jsonDecode(res.body);
+    throw Exception('Failed to send message');
+  }
 }

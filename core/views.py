@@ -50,7 +50,6 @@ class HotelOrderListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         order = serializer.save(buyer=self.request.user)
 
-        # Try to send push notification (non-blocking)
         try:
             from .fcm_utils import send_push_notification
 
@@ -68,7 +67,6 @@ class HotelOrderListCreateView(generics.ListCreateAPIView):
         except Exception as e:
             print(f'FCM notification error: {e}')
 
-        # Log
         AuditLog.objects.create(
             user=self.request.user,
             action='CREATE_ORDER',
@@ -367,8 +365,8 @@ class DeviceTokenView(APIView):
         )
         return Response({'message': 'Token registered'})
 
+
 class ChatRoomView(APIView):
-    """Get or create chat room for an order."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, order_id):
@@ -377,7 +375,6 @@ class ChatRoomView(APIView):
         except HotelOrder.DoesNotExist:
             return Response({'error': 'Order not found'}, status=404)
 
-        # Only buyer or accepted fisherman can access
         if request.user != order.buyer and request.user != order.accepted_by:
             return Response({'error': 'Unauthorized'}, status=403)
 
@@ -386,14 +383,13 @@ class ChatRoomView(APIView):
 
 
 class ChatMessagesView(APIView):
-    """Get all messages for a chat room."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, order_id):
         try:
             chat_room = ChatRoom.objects.get(order_id=order_id)
         except ChatRoom.DoesNotExist:
-            return Response([], status=200)
+            return Response({'messages': [], 'media': []}, status=200)
 
         if request.user != chat_room.order.buyer and request.user != chat_room.order.accepted_by:
             return Response({'error': 'Unauthorized'}, status=403)
@@ -407,7 +403,6 @@ class ChatMessagesView(APIView):
 
 
 class SendMessageView(APIView):
-    """Send a chat message."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, order_id):
@@ -431,7 +426,6 @@ class SendMessageView(APIView):
             message=message_text
         )
 
-        # Notify the other party via FCM
         try:
             recipient = order.buyer if request.user == order.accepted_by else order.accepted_by
             if recipient:
@@ -451,7 +445,6 @@ class SendMessageView(APIView):
 
 
 class UploadMediaView(APIView):
-    """Upload image/video for an order chat."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, order_id):
@@ -469,25 +462,24 @@ class UploadMediaView(APIView):
         if not file:
             return Response({'error': 'File is required'}, status=400)
 
-        # Save file locally
-        import uuid
+        # Upload to Cloudinary
+        import cloudinary
+        import cloudinary.uploader
         import os
-        from django.conf import settings
 
-        ext = os.path.splitext(file.name)[1]
-        filename = f'{uuid.uuid4().hex}{ext}'
-        upload_dir = os.path.join(settings.BASE_DIR, 'media', 'chat')
-        os.makedirs(upload_dir, exist_ok=True)
-        file_path = os.path.join(upload_dir, filename)
+        cloudinary.config(
+            cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', 'pjtlpvsm'),
+            api_key=os.environ.get('CLOUDINARY_API_KEY', '257888553696581'),
+            api_secret=os.environ.get('CLOUDINARY_API_SECRET', 'GuQyqbjefVLzks6inkEcayDMuAk'),
+        )
 
-        with open(file_path, 'wb+') as dest:
-            for chunk in file.chunks():
-                dest.write(chunk)
+        try:
+            result = cloudinary.uploader.upload(file, resource_type='auto')
+            file_url = result['secure_url']
+        except Exception as e:
+            return Response({'error': f'Cloudinary upload failed: {e}'}, status=500)
 
         chat_room, created = ChatRoom.objects.get_or_create(order=order)
-
-        # Build URL
-        file_url = f'/media/chat/{filename}'
 
         media = OrderMedia.objects.create(
             room=chat_room,

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Calendar, ShoppingCart, Clock, Phone, MapPin, Hotel, User, CheckCircle } from 'lucide-react'
+import { Calendar, ShoppingCart, Clock, Phone, MapPin, Hotel, User, CheckCircle, MessageCircle, Send, X } from 'lucide-react'
 
 const API = 'https://samaki-smart-ai.onrender.com/api/auth'
 
@@ -11,8 +11,28 @@ const orderStatusConfig = {
   cancelled: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' },
 }
 
-export default function OrdersPage({ token, alerts, orders, onOrderCreated, onForecast }) {
+export default function OrdersPage({ token, alerts, orders, onOrderCreated, onForecast, user }) {
   const [form, setForm] = useState({ species: '', quantity_kg: '', delivery_date: '', max_price_tzs: '' })
+  const [chatOrderId, setChatOrderId] = useState(null)
+  const [chatMessages, setChatMessages] = useState([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatOtherParty, setChatOtherParty] = useState('')
+
+  useEffect(() => {
+    if (chatOrderId) {
+      const fetchMessages = async () => {
+        try {
+          const res = await axios.get(`${API}/chat/orders/${chatOrderId}/messages/`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          setChatMessages(res.data.messages || [])
+        } catch (e) {}
+      }
+      fetchMessages()
+      const interval = setInterval(fetchMessages, 4000)
+      return () => clearInterval(interval)
+    }
+  }, [chatOrderId, token])
 
   const createOrder = async (e) => {
     e.preventDefault()
@@ -23,11 +43,37 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
     } catch (e) { alert('Order failed') }
   }
 
+  const openChat = async (order) => {
+    setChatOrderId(order.id)
+    setChatOtherParty(order.accepted_by_name || 'Fisherman')
+    try {
+      const res = await axios.get(`${API}/chat/orders/${order.id}/messages/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setChatMessages(res.data.messages || [])
+    } catch (e) {}
+  }
+
+  const sendChatMessage = async () => {
+    if (!chatInput.trim()) return
+    try {
+      await axios.post(`${API}/chat/orders/${chatOrderId}/send/`,
+        { message: chatInput },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setChatInput('')
+      const res = await axios.get(`${API}/chat/orders/${chatOrderId}/messages/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setChatMessages(res.data.messages || [])
+    } catch (e) {}
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Order Form */}
-        <div className="bg-[#111827] rounded-2xl border border-white/[0.05] p-6">
+        <div className="bg-[#111827] rounded-2xl border border-white/[0.05] p-5 sm:p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-400/20 flex items-center justify-center">
               <Calendar size={18} className="text-violet-400" />
@@ -40,7 +86,7 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
               <select value={form.species} onChange={e => setForm({...form, species: e.target.value})}
                 className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/50 transition-all" required>
                 <option value="">Select species...</option>
-                {alerts.filter(a => a.status !== 'red').map(a => <option key={a.id} value={a.id}>{a.name_en.replace(/ *\([^)]*\)/g, '')}</option>)}
+                {alerts.filter(a => a.status !== 'red').map(a => <option key={a.id} value={a.id}>{a.name_en?.replace(/ *\([^)]*\)/g, '')}</option>)}
               </select>
             </div>
             <div>
@@ -64,8 +110,8 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
           </form>
         </div>
 
-        {/* Orders Table */}
-        <div className="lg:col-span-2 bg-[#111827] rounded-2xl border border-white/[0.05] p-6">
+        {/* Orders List */}
+        <div className="lg:col-span-2 bg-[#111827] rounded-2xl border border-white/[0.05] p-5 sm:p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/20 flex items-center justify-center">
@@ -80,18 +126,24 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
               const hasAccepted = o.accepted_by_name != null
               return (
                 <div key={o.id} className="border border-white/[0.05] rounded-2xl p-5 bg-white/[0.02] hover:bg-white/[0.04] transition-all">
-                  {/* Header */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">
                         {o.species_name?.includes('Octopus') ? '🐙' :
                          o.species_name?.includes('Tuna') ? '🐟' :
                          o.species_name?.includes('Snapper') ? '🐡' :
-                         o.species_name?.includes('King') ? '🦈' :
+                         o.species_name?.includes('King') ? '👑' :
+                         o.species_name?.includes('Lobster') ? '🦞' :
                          o.species_name?.includes('Sardine') ? '🐟' :
                          o.species_name?.includes('Shrimp') ? '🦐' :
                          o.species_name?.includes('Parrot') ? '🐠' :
-                         o.species_name?.includes('Rabbit') ? '🐠' : '🐟'}
+                         o.species_name?.includes('Rabbit') ? '🐰' :
+                         o.species_name?.includes('Grouper') ? '🐟' :
+                         o.species_name?.includes('Sword') ? '⚔️' :
+                         o.species_name?.includes('Barracuda') ? '🐊' :
+                         o.species_name?.includes('Shark') ? '🦈' :
+                         o.species_name?.includes('Anchovy') ? '🐟' :
+                         o.species_name?.includes('Mackerel') ? '🐟' : '🐟'}
                       </span>
                       <div>
                         <p className="font-bold text-white">Order #{o.id} - {o.species_name}</p>
@@ -103,7 +155,6 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
                     </span>
                   </div>
 
-                  {/* Order Details Grid */}
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     <div className="bg-white/[0.03] rounded-xl p-3 text-center">
                       <p className="text-xs text-gray-500 mb-1">Quantity</p>
@@ -119,11 +170,10 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
                     </div>
                   </div>
 
-                  {/* Accepted By Info */}
                   {hasAccepted && (
                     <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-3">
                       <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">🎣 Accepted By</p>
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="flex items-center gap-2">
                           <User size={14} className="text-emerald-400" />
                           <div>
@@ -149,7 +199,6 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
                     </div>
                   )}
 
-                  {/* Fulfilled Badge */}
                   {o.status === 'fulfilled' && (
                     <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3 flex items-center justify-center gap-2">
                       <CheckCircle size={16} className="text-emerald-400" />
@@ -157,7 +206,16 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
                     </div>
                   )}
 
-                  {/* Forecast Button */}
+                  {(o.status === 'accepted' || o.status === 'fulfilled') && hasAccepted && (
+                    <button
+                      onClick={() => openChat(o)}
+                      className="w-full py-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 text-sm font-semibold hover:bg-cyan-500/20 transition-all flex items-center justify-center gap-2 mt-3"
+                    >
+                      <MessageCircle size={16} />
+                      Chat with {o.accepted_by_name || 'Fisherman'}
+                    </button>
+                  )}
+
                   <div className="flex justify-end mt-3">
                     <button onClick={() => onForecast(o.species_name, 'Darajani Market')}
                       className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg transition-all border border-cyan-500/20">
@@ -177,6 +235,68 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
           </div>
         </div>
       </div>
+
+      {/* Chat Modal */}
+      {chatOrderId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111827] rounded-2xl border border-white/[0.08] w-full max-w-md h-[500px] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-white/[0.05]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-sm font-bold text-white">
+                  {chatOtherParty[0]?.toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-semibold text-white text-sm">{chatOtherParty}</p>
+                  <p className="text-xs text-gray-500">Order #{chatOrderId}</p>
+                </div>
+              </div>
+              <button onClick={() => setChatOrderId(null)} className="text-gray-500 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {chatMessages.map((msg, i) => {
+                const isMe = msg.sender_name === user?.username
+                return (
+                  <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[70%] px-4 py-2 rounded-2xl ${
+                      isMe
+                        ? 'bg-gradient-to-r from-blue-600 to-cyan-500'
+                        : 'bg-white/[0.05]'
+                    }`}>
+                      <p className="text-sm text-white">{msg.message}</p>
+                      <p className={`text-[9px] mt-1 ${isMe ? 'text-white/70' : 'text-gray-500'}`}>
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+              {chatMessages.length === 0 && (
+                <p className="text-center text-gray-600 text-sm">No messages yet. Say hello!</p>
+              )}
+            </div>
+
+            <div className="p-3 border-t border-white/[0.05] flex gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyPress={e => e.key === 'Enter' && sendChatMessage()}
+                placeholder="Type a message..."
+                className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-400/50"
+              />
+              <button
+                onClick={sendChatMessage}
+                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl text-white"
+              >
+                <Send size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
