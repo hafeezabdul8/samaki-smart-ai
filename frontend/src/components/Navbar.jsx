@@ -10,6 +10,7 @@ export default function Navbar({ user, activeTab, setActiveTab, onLogout }) {
         { id: 'orders', label: 'All Orders' },
         { id: 'species', label: 'Species' },
         { id: 'audit', label: 'Audit Log' },
+        { id: 'reports', label: 'Reports'},
       ]
     : [
         { id: 'dashboard', label: 'Dashboard' },

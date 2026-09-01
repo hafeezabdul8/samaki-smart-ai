@@ -11,6 +11,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
 import AdminUserDetailPage from './pages/admin/AdminUserDetailPage'
 import AdminAuditLogPage from './pages/admin/AdminAuditLogPage'
+import AdminReportsPage from './pages/admin/AdminReportsPage'
 import Navbar from './components/Navbar'
 import './index.css'
 
@@ -95,6 +96,7 @@ export default function App() {
       {activeTab === 'orders' && isAdmin && <AdminPage tab="orders" adminOrders={adminOrders} alerts={alerts} />}
       {activeTab === 'species' && isAdmin && <AdminPage tab="species" adminOrders={adminOrders} alerts={alerts} />}
       {activeTab === 'audit' && isAdmin && <AdminAuditLogPage token={token} />}
+      {activeTab === 'reports' && isAdmin && <AdminReportsPage token={token} />}
       {activeTab === 'forecast' && !isAdmin && <ForecastPage forecast={forecast} />}
       {activeTab === 'profile' && !isAdmin && <ProfilePage token={token} user={user} onProfileUpdate={handleProfileUpdate} />}
     </div>

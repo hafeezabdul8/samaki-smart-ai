@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { ShoppingCart, MapPin, Phone, User, Sparkles, DollarSign, Scale, MessageCircle } from 'lucide-react'
+import { ShoppingCart, MapPin, Phone, User, Sparkles } from 'lucide-react'
 
 const API = 'https://samaki-smart-ai.onrender.com/api/auth'
 
@@ -9,6 +9,7 @@ export default function MarketplacePage({ token, user, onOrderPlaced }) {
   const [loading, setLoading] = useState(true)
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [orderQty, setOrderQty] = useState('')
+  const [placingOrder, setPlacingOrder] = useState(false)
 
   useEffect(() => {
     fetchProducts()
@@ -27,9 +28,18 @@ export default function MarketplacePage({ token, user, onOrderPlaced }) {
       alert('Please enter quantity')
       return
     }
+    if (parseFloat(orderQty) > parseFloat(product.quantity_kg)) {
+      alert(`Maximum available is ${product.quantity_kg} kg`)
+      return
+    }
+
+    setPlacingOrder(true)
     try {
       await axios.post(`${API}/products/${product.id}/order/`,
-        { quantity_kg: parseFloat(orderQty), delivery_date: new Date(Date.now() + 86400000).toISOString().split('T')[0] },
+        {
+          quantity_kg: parseFloat(orderQty),
+          delivery_date: new Date(Date.now() + 86400000).toISOString().split('T')[0]
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       )
       alert('Order placed successfully! 🎉')
@@ -38,8 +48,10 @@ export default function MarketplacePage({ token, user, onOrderPlaced }) {
       fetchProducts()
       if (onOrderPlaced) onOrderPlaced()
     } catch (e) {
-      alert('Order failed. Please try again.')
+      const errorMsg = e.response?.data?.error || 'Order failed. Please try again.'
+      alert(errorMsg)
     }
+    setPlacingOrder(false)
   }
 
   const speciesIcons = {
@@ -66,17 +78,22 @@ export default function MarketplacePage({ token, user, onOrderPlaced }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">🛒 Today's Fish Market</h1>
-        <p className="text-gray-400 text-sm mt-1">Fresh catches from fishermen • {products.length} products available</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">🛒 Today's Fish Market</h1>
+          <p className="text-gray-400 text-sm mt-1">Fresh catches from fishermen • {products.length} products</p>
+        </div>
+        <button
+          onClick={fetchProducts}
+          className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 text-sm font-semibold hover:bg-cyan-500/20 transition-all"
+        >
+          🔄 Refresh
+        </button>
       </div>
 
-      {/* Products Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {products.map(product => (
-          <div key={product.id} className="bg-[#111827] rounded-2xl border border-white/[0.05] overflow-hidden hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/5 transition-all">
-            {/* Product Image */}
+          <div key={product.id} className="bg-[#111827] rounded-2xl border border-white/[0.05] overflow-hidden hover:border-cyan-500/30 hover:shadow-lg transition-all">
             <div className="relative h-48 bg-gray-800">
               <img
                 src={product.photo_url}
@@ -92,7 +109,6 @@ export default function MarketplacePage({ token, user, onOrderPlaced }) {
               </div>
             </div>
 
-            {/* Product Details */}
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -100,7 +116,7 @@ export default function MarketplacePage({ token, user, onOrderPlaced }) {
                   {product.ai_suggested_price && (
                     <p className="text-xs text-gray-500 flex items-center gap-1">
                       <Sparkles size={10} className="text-cyan-400" />
-                      AI suggested: TZS {Number(product.ai_suggested_price).toLocaleString()}/kg
+                      AI: TZS {Number(product.ai_suggested_price).toLocaleString()}/kg
                     </p>
                   )}
                 </div>
@@ -112,14 +128,14 @@ export default function MarketplacePage({ token, user, onOrderPlaced }) {
 
               <div className="space-y-2 mb-3">
                 <p className="text-xs text-gray-400 flex items-center gap-2">
-                  <User size={12} className="text-gray-500" /> {product.fisherman_name}
+                  <User size={12} /> {product.fisherman_name}
                 </p>
                 <p className="text-xs text-gray-400 flex items-center gap-2">
-                  <MapPin size={12} className="text-gray-500" /> {product.market}
+                  <MapPin size={12} /> {product.market}
                 </p>
                 {product.fisherman_phone && (
                   <p className="text-xs text-gray-400 flex items-center gap-2">
-                    <Phone size={12} className="text-gray-500" /> {product.fisherman_phone}
+                    <Phone size={12} /> {product.fisherman_phone}
                   </p>
                 )}
               </div>
@@ -143,7 +159,7 @@ export default function MarketplacePage({ token, user, onOrderPlaced }) {
         <div className="text-center py-20">
           <p className="text-5xl mb-4">🐟</p>
           <p className="text-gray-500 font-medium">No products available today</p>
-          <p className="text-gray-600 text-sm">Check back later or place a custom order</p>
+          <p className="text-gray-600 text-sm">Check back later</p>
         </div>
       )}
 
@@ -177,15 +193,6 @@ export default function MarketplacePage({ token, user, onOrderPlaced }) {
                 <p className="text-xs text-gray-600 mt-1">Max: {selectedProduct.quantity_kg} kg available</p>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Delivery Date</label>
-                <input
-                  type="date"
-                  value={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
-                  className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400/50"
-                />
-              </div>
-
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
                 <p className="text-xs text-gray-400">
                   Total: <span className="text-white font-bold">TZS {(Number(selectedProduct.price_per_kg) * (parseFloat(orderQty) || 0)).toLocaleString()}</span>
@@ -194,9 +201,10 @@ export default function MarketplacePage({ token, user, onOrderPlaced }) {
 
               <button
                 onClick={() => placeOrder(selectedProduct)}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl text-white font-semibold hover:shadow-lg transition-all"
+                disabled={placingOrder}
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl text-white font-semibold hover:shadow-lg transition-all disabled:opacity-50"
               >
-                Confirm Order
+                {placingOrder ? 'Placing Order...' : 'Confirm Order'}
               </button>
             </div>
           </div>

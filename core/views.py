@@ -635,3 +635,107 @@ class UploadProductPhotoView(APIView):
             return Response({'url': result['secure_url']})
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+
+
+class AdminReportsView(APIView):
+    """Generate reports with filters."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Unauthorized'}, status=403)
+
+        report_type = request.query_params.get('type', 'orders')  # orders, logs, transactions
+        status_filter = request.query_params.get('status', 'all')
+        period = request.query_params.get('period', 'all')  # today, 2days, 7days, 30days, monthly, yearly, all
+
+        now = timezone.now()
+
+        # Calculate time range
+        if period == 'today':
+            start_date = now - timedelta(hours=24)
+        elif period == '2days':
+            start_date = now - timedelta(days=2)
+        elif period == '7days':
+            start_date = now - timedelta(days=7)
+        elif period == '30days':
+            start_date = now - timedelta(days=30)
+        elif period == 'monthly':
+            start_date = now - timedelta(days=30)
+        elif period == 'yearly':
+            start_date = now - timedelta(days=365)
+        elif period == '2hours':
+            start_date = now - timedelta(hours=2)
+        else:
+            start_date = None
+
+        # Build queryset
+        orders_qs = HotelOrder.objects.select_related('buyer', 'species', 'accepted_by').all()
+        logs_qs = AuditLog.objects.select_related('user').all()
+
+        if start_date:
+            orders_qs = orders_qs.filter(created_at__gte=start_date)
+            logs_qs = logs_qs.filter(timestamp__gte=start_date)
+
+        if status_filter != 'all':
+            orders_qs = orders_qs.filter(status=status_filter)
+
+        # Summary
+        total_orders = orders_qs.count()
+        pending_count = orders_qs.filter(status='pending').count()
+        accepted_count = orders_qs.filter(status='accepted').count()
+        fulfilled_count = orders_qs.filter(status='fulfilled').count()
+        cancelled_count = orders_qs.filter(status='cancelled').count()
+        total_value = orders_qs.aggregate(total=Sum('max_price_tzs'))['total'] or 0
+
+        # Order details
+        orders_data = []
+        for order in orders_qs[:200]:
+            orders_data.append({
+                'id': order.id,
+                'date': order.created_at.strftime('%Y-%m-%d'),
+                'time': order.created_at.strftime('%H:%M:%S'),
+                'buyer_name': order.buyer.username,
+                'buyer_phone': order.buyer.phone,
+                'buyer_location': order.buyer.location,
+                'seller_name': order.accepted_by.username if order.accepted_by else '—',
+                'seller_phone': order.accepted_by.phone if order.accepted_by else '—',
+                'seller_market': order.accepted_by.market if order.accepted_by else '—',
+                'species': order.species.name_en,
+                'species_sw': order.species.name_sw,
+                'quantity_kg': float(order.quantity_kg),
+                'price_tzs': float(order.max_price_tzs) if order.max_price_tzs else 0,
+                'total_value': float(order.quantity_kg) * float(order.max_price_tzs) if order.max_price_tzs else 0,
+                'status': order.status,
+                'delivery_date': str(order.delivery_date),
+            })
+
+        # System logs
+        logs_data = []
+        for log in logs_qs[:100]:
+            logs_data.append({
+                'id': log.id,
+                'user': log.user.username if log.user else 'System',
+                'action': log.action,
+                'table': log.table_name,
+                'record_id': log.record_id,
+                'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            })
+
+        return Response({
+            'report_type': report_type,
+            'generated_at': now.strftime('%Y-%m-%d %H:%M:%S'),
+            'generated_by': request.user.username,
+            'period': period,
+            'status_filter': status_filter,
+            'summary': {
+                'total_orders': total_orders,
+                'pending': pending_count,
+                'accepted': accepted_count,
+                'fulfilled': fulfilled_count,
+                'cancelled': cancelled_count,
+                'total_value_tzs': float(total_value),
+            },
+            'orders': orders_data,
+            'logs': logs_data,
+        })

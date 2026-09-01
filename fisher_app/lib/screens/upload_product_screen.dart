@@ -92,10 +92,13 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       
+      debugPrint('Photo upload status: ${response.statusCode}');
+      debugPrint('Photo upload body: ${response.body}');
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        setState(() => _photoUrl = data['url']);
         if (mounted) {
+          setState(() => _photoUrl = data['url']);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Photo uploaded ✅'), backgroundColor: AppTheme.emeraldAccent),
           );
@@ -103,11 +106,12 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Photo upload failed'), backgroundColor: AppTheme.redAccent),
+            SnackBar(content: Text('Photo upload failed (${response.statusCode})'), backgroundColor: AppTheme.redAccent),
           );
         }
       }
     } catch (e) {
+      debugPrint('Photo upload error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.redAccent),
@@ -120,7 +124,13 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
   Future<void> _submit() async {
     if (_selectedSpeciesId == null || _photoUrl == null || _priceCtrl.text.isEmpty || _qtyCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all required fields'), backgroundColor: AppTheme.amberAccent),
+        SnackBar(
+          content: Text(
+            _photoUrl == null ? 'Please upload a photo first' : 'Please fill all required fields',
+            style: const TextStyle(color: Colors.white),
+          ),
+          backgroundColor: AppTheme.amberAccent,
+        ),
       );
       return;
     }
@@ -144,9 +154,10 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Product published! 🎉'), backgroundColor: AppTheme.emeraldAccent),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       }
     } catch (e) {
+      debugPrint('Submit error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed: $e'), backgroundColor: AppTheme.redAccent),
@@ -173,7 +184,6 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Photo picker
                   Center(
                     child: GestureDetector(
                       onTap: _uploading ? null : () {
@@ -227,7 +237,6 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Species dropdown
                   Text(lang.t('Species', 'Aina ya Samaki'), style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Container(
@@ -256,7 +265,6 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Price
                   Text(lang.t('Price per kg (TZS)', 'Bei kwa kilo (TZS)'), style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   TextField(
@@ -267,7 +275,6 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Quantity
                   Text(lang.t('Quantity (kg)', 'Kiasi (kilo)'), style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   TextField(
@@ -278,7 +285,6 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Market
                   Text(lang.t('Market', 'Soko'), style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Container(
@@ -301,7 +307,6 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Description
                   Text(lang.t('Description', 'Maelezo'), style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   TextField(
@@ -312,7 +317,6 @@ class _UploadProductScreenState extends State<UploadProductScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Submit button
                   GestureDetector(
                     onTap: _submitting ? null : _submit,
                     child: Container(

@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Calendar, ShoppingCart, Clock, Phone, MapPin, Hotel, User, CheckCircle, MessageCircle, Send, X, Image as ImageIcon } from 'lucide-react'
+import { Calendar, ShoppingCart, Clock, Phone, MapPin, User, CheckCircle, MessageCircle, Send, X, Image as ImageIcon, Package, Truck } from 'lucide-react'
 
 const API = 'https://samaki-smart-ai.onrender.com/api/auth'
 
 const orderStatusConfig = {
-  pending: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20' },
-  accepted: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
-  fulfilled: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
-  cancelled: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' },
+  pending: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', label: 'PENDING', icon: Clock },
+  accepted: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20', label: 'ACCEPTED', icon: CheckCircle },
+  fulfilled: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', label: 'FULFILLED', icon: Truck },
+  cancelled: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20', label: 'CANCELLED', icon: X },
 }
 
 export default function OrdersPage({ token, alerts, orders, onOrderCreated, onForecast, user }) {
@@ -19,6 +19,7 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
   const [chatInput, setChatInput] = useState('')
   const [chatOtherParty, setChatOtherParty] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [showPreOrderForm, setShowPreOrderForm] = useState(false)
 
   useEffect(() => {
     if (chatOrderId) {
@@ -42,13 +43,14 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
     try {
       await axios.post(`${API}/orders/`, form, { headers: { Authorization: `Bearer ${token}` } })
       setForm({ species: '', quantity_kg: '', delivery_date: '', max_price_tzs: '' })
+      setShowPreOrderForm(false)
       onOrderCreated()
     } catch (e) { alert('Order failed') }
   }
 
   const openChat = async (order) => {
     setChatOrderId(order.id)
-    setChatOtherParty(order.accepted_by_name || 'Fisherman')
+    setChatOtherParty(order.accepted_by_name || order.buyer_name || 'Fisherman')
     try {
       const res = await axios.get(`${API}/chat/orders/${order.id}/messages/`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -102,28 +104,66 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
     setUploading(false)
   }
 
-  // Combine messages and media for display
   const combinedItems = [
     ...chatMedia.map(m => ({ ...m, itemType: 'media' })),
     ...chatMessages.map(m => ({ ...m, itemType: 'message' })),
   ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
 
+  const pendingOrders = orders.filter(o => o.status === 'pending')
+  const acceptedOrders = orders.filter(o => o.status === 'accepted')
+  const fulfilledOrders = orders.filter(o => o.status === 'fulfilled')
+
+  const getSpeciesIcon = (name) => {
+    if (name?.includes('Octopus')) return '🐙'
+    if (name?.includes('Tuna')) return '🐟'
+    if (name?.includes('Snapper')) return '🐡'
+    if (name?.includes('King')) return '👑'
+    if (name?.includes('Lobster')) return '🦞'
+    if (name?.includes('Sardine')) return '🐟'
+    if (name?.includes('Shrimp')) return '🦐'
+    if (name?.includes('Parrot')) return '🐠'
+    if (name?.includes('Rabbit')) return '🐰'
+    if (name?.includes('Grouper')) return '🐟'
+    if (name?.includes('Sword')) return '⚔️'
+    if (name?.includes('Barracuda')) return '🐊'
+    if (name?.includes('Shark')) return '🦈'
+    if (name?.includes('Anchovy')) return '🐟'
+    if (name?.includes('Mackerel')) return '🐟'
+    return '🐟'
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Order Form */}
-        <div className="bg-[#111827] rounded-2xl border border-white/[0.05] p-5 sm:p-6">
-          <div className="flex items-center gap-3 mb-6">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">📋 My Orders</h1>
+          <p className="text-gray-400 text-sm mt-1">
+            {pendingOrders.length} pending • {acceptedOrders.length} accepted • {fulfilledOrders.length} fulfilled
+          </p>
+        </div>
+        <button
+          onClick={() => setShowPreOrderForm(!showPreOrderForm)}
+          className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 rounded-xl text-white text-sm font-semibold transition-all flex items-center gap-2"
+        >
+          <Package size={16} /> {showPreOrderForm ? 'Close' : 'Custom Pre-Order'}
+        </button>
+      </div>
+
+      {/* Custom Pre-Order Form */}
+      {showPreOrderForm && (
+        <div className="bg-[#111827] rounded-2xl border border-white/[0.05] p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-400/20 flex items-center justify-center">
               <Calendar size={18} className="text-violet-400" />
             </div>
-            <div><h2 className="font-bold text-white">New Pre-Order</h2><p className="text-xs text-gray-500">Request fish supply</p></div>
+            <h2 className="font-bold text-white">Custom Pre-Order</h2>
           </div>
-          <form onSubmit={createOrder} className="space-y-4">
+          <form onSubmit={createOrder} className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Species</label>
               <select value={form.species} onChange={e => setForm({...form, species: e.target.value})}
-                className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/50 transition-all" required>
+                className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/20" required>
                 <option value="">Select species...</option>
                 {alerts.filter(a => a.status !== 'red').map(a => <option key={a.id} value={a.id}>{a.name_en?.replace(/ *\([^)]*\)/g, '')}</option>)}
               </select>
@@ -131,142 +171,135 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Quantity (kg)</label>
               <input type="number" value={form.quantity_kg} onChange={e => setForm({...form, quantity_kg: e.target.value})}
-                className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/50 transition-all" placeholder="Min 1 kg" min="1" required />
+                className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600" placeholder="Min 1 kg" min="1" required />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Delivery Date</label>
               <input type="date" value={form.delivery_date} onChange={e => setForm({...form, delivery_date: e.target.value})}
-                className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/50 transition-all" required />
+                className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white" required />
             </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Max Price (TZS) <span className="text-gray-700 font-normal normal-case">— Optional</span></label>
-              <input type="number" value={form.max_price_tzs} onChange={e => setForm({...form, max_price_tzs: e.target.value})}
-                className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/50 transition-all" placeholder="Market price if empty" />
+            <div className="flex items-end">
+              <button type="submit" className="w-full bg-gradient-to-r from-violet-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                <ShoppingCart size={16} /> Place
+              </button>
             </div>
-            <button type="submit" className="w-full bg-gradient-to-r from-violet-600 to-purple-600 text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-2">
-              <ShoppingCart size={18} /> Place Order
-            </button>
           </form>
         </div>
+      )}
 
-        {/* Orders List */}
-        <div className="lg:col-span-2 bg-[#111827] rounded-2xl border border-white/[0.05] p-5 sm:p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/20 flex items-center justify-center">
-                <Clock size={18} className="text-blue-400" />
-              </div>
-              <div><h2 className="font-bold text-white">My Orders</h2><p className="text-xs text-gray-500">{orders.length} total orders</p></div>
-            </div>
-          </div>
-          <div className="space-y-4">
-            {orders.map(o => {
-              const s = orderStatusConfig[o.status]
-              const hasAccepted = o.accepted_by_name != null
-              return (
-                <div key={o.id} className="border border-white/[0.05] rounded-2xl p-5 bg-white/[0.02] hover:bg-white/[0.04] transition-all">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">
-                        {o.species_name?.includes('Octopus') ? '🐙' :
-                         o.species_name?.includes('Tuna') ? '🐟' :
-                         o.species_name?.includes('Snapper') ? '🐡' :
-                         o.species_name?.includes('King') ? '👑' :
-                         o.species_name?.includes('Lobster') ? '🦞' :
-                         o.species_name?.includes('Sardine') ? '🐟' :
-                         o.species_name?.includes('Shrimp') ? '🦐' :
-                         o.species_name?.includes('Parrot') ? '🐠' :
-                         o.species_name?.includes('Rabbit') ? '🐰' : '🐟'}
-                      </span>
-                      <div>
-                        <p className="font-bold text-white">Order #{o.id} - {o.species_name}</p>
-                        <p className="text-xs text-gray-500">{o.quantity_kg} kg • Delivery: {o.delivery_date}</p>
-                      </div>
-                    </div>
-                    <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full ${s.bg} ${s.text} border ${s.border} uppercase tracking-wider`}>
-                      {o.status}
-                    </span>
-                  </div>
+      {/* Orders List */}
+      <div className="space-y-4">
+        {orders.map(o => {
+          const s = orderStatusConfig[o.status] || orderStatusConfig.pending
+          const StatusIcon = s.icon
+          const hasAccepted = o.accepted_by_name != null
+          const isBuyer = user?.role === 'hotel_buyer'
+          const otherParty = isBuyer ? (o.accepted_by_name || 'Fisherman') : (o.buyer_name || 'Buyer')
 
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div className="bg-white/[0.03] rounded-xl p-3 text-center">
-                      <p className="text-xs text-gray-500 mb-1">Quantity</p>
-                      <p className="font-bold text-white">{o.quantity_kg} kg</p>
-                    </div>
-                    <div className="bg-white/[0.03] rounded-xl p-3 text-center">
-                      <p className="text-xs text-gray-500 mb-1">Max Price</p>
-                      <p className="font-bold text-white">{o.max_price_tzs ? `TZS ${Number(o.max_price_tzs).toLocaleString()}` : 'Market'}</p>
-                    </div>
-                    <div className="bg-white/[0.03] rounded-xl p-3 text-center">
-                      <p className="text-xs text-gray-500 mb-1">Delivery</p>
-                      <p className="font-bold text-white text-sm">{o.delivery_date}</p>
-                    </div>
-                  </div>
-
-                  {hasAccepted && (
-                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-3">
-                      <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">🎣 Accepted By</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className="flex items-center gap-2">
-                          <User size={14} className="text-emerald-400" />
-                          <div>
-                            <p className="text-[10px] text-gray-500">Fisherman</p>
-                            <p className="text-sm text-white font-medium">{o.accepted_by_name}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Phone size={14} className="text-emerald-400" />
-                          <div>
-                            <p className="text-[10px] text-gray-500">Contact</p>
-                            <p className="text-sm text-white font-medium">{o.accepted_by_phone || '—'}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin size={14} className="text-emerald-400" />
-                          <div>
-                            <p className="text-[10px] text-gray-500">Market</p>
-                            <p className="text-sm text-white font-medium">{o.accepted_by_market || '—'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {o.status === 'fulfilled' && (
-                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3 flex items-center justify-center gap-2">
-                      <CheckCircle size={16} className="text-emerald-400" />
-                      <span className="text-emerald-400 text-sm font-semibold">Delivery Completed</span>
-                    </div>
-                  )}
-
-                  {(o.status === 'accepted' || o.status === 'fulfilled') && hasAccepted && (
-                    <button
-                      onClick={() => openChat(o)}
-                      className="w-full py-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 text-sm font-semibold hover:bg-cyan-500/20 transition-all flex items-center justify-center gap-2 mt-3"
-                    >
-                      <MessageCircle size={16} />
-                      Chat with {o.accepted_by_name || 'Fisherman'}
-                    </button>
-                  )}
-
-                  <div className="flex justify-end mt-3">
-                    <button onClick={() => onForecast(o.species_name, 'Darajani Market')}
-                      className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg transition-all border border-cyan-500/20">
-                      View Forecast
-                    </button>
+          return (
+            <div key={o.id} className="bg-[#111827] rounded-2xl border border-white/[0.05] p-5 hover:border-white/[0.1] transition-all">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{getSpeciesIcon(o.species_name)}</span>
+                  <div>
+                    <p className="font-bold text-white">Order #{o.id} - {o.species_name}</p>
+                    <p className="text-xs text-gray-500">{o.quantity_kg} kg • Delivery: {o.delivery_date}</p>
                   </div>
                 </div>
-              )
-            })}
-            {orders.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-gray-600">
-                <ShoppingCart size={48} className="mb-4 opacity-30" />
-                <p className="font-medium">No orders yet</p>
-                <p className="text-sm">Create your first pre-order to get started</p>
+                <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full ${s.bg} ${s.text} border ${s.border} uppercase tracking-wider flex items-center gap-1`}>
+                  <StatusIcon size={10} /> {s.label}
+                </span>
               </div>
-            )}
+
+              {/* Order Details */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="bg-white/[0.03] rounded-xl p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Quantity</p>
+                  <p className="font-bold text-white">{o.quantity_kg} kg</p>
+                </div>
+                <div className="bg-white/[0.03] rounded-xl p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Price</p>
+                  <p className="font-bold text-white">{o.max_price_tzs ? `TZS ${Number(o.max_price_tzs).toLocaleString()}` : 'Market'}</p>
+                </div>
+                <div className="bg-white/[0.03] rounded-xl p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Delivery</p>
+                  <p className="font-bold text-white text-sm">{o.delivery_date}</p>
+                </div>
+              </div>
+
+              {/* Party Info */}
+              {hasAccepted && (
+                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-3">
+                  <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
+                    {isBuyer ? '🎣 Fisherman' : '🏨 Buyer'}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex items-center gap-2">
+                      <User size={14} className="text-emerald-400" />
+                      <div>
+                        <p className="text-[10px] text-gray-500">Name</p>
+                        <p className="text-sm text-white font-medium">{otherParty}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone size={14} className="text-emerald-400" />
+                      <div>
+                        <p className="text-[10px] text-gray-500">Contact</p>
+                        <p className="text-sm text-white font-medium">
+                          {isBuyer ? (o.accepted_by_phone || '—') : (o.buyer_phone || '—')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin size={14} className="text-emerald-400" />
+                      <div>
+                        <p className="text-[10px] text-gray-500">Location</p>
+                        <p className="text-sm text-white font-medium">
+                          {isBuyer ? (o.accepted_by_market || '—') : (o.buyer_location || '—')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Fulfilled Badge */}
+              {o.status === 'fulfilled' && (
+                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3 flex items-center justify-center gap-2">
+                  <CheckCircle size={16} className="text-emerald-400" />
+                  <span className="text-emerald-400 text-sm font-semibold">Delivery Completed</span>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 mt-3">
+                {(o.status === 'accepted' || o.status === 'fulfilled') && hasAccepted && (
+                  <button
+                    onClick={() => openChat(o)}
+                    className="flex-1 py-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 text-sm font-semibold hover:bg-cyan-500/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle size={16} /> Chat
+                  </button>
+                )}
+                <button
+                  onClick={() => onForecast(o.species_name, 'Darajani Market')}
+                  className="px-4 py-2.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-lg transition-all border border-cyan-500/20"
+                >
+                  Forecast
+                </button>
+              </div>
+            </div>
+          )
+        })}
+
+        {orders.length === 0 && (
+          <div className="text-center py-16 text-gray-600">
+            <ShoppingCart size={48} className="mb-4 opacity-30 mx-auto" />
+            <p className="font-medium">No orders yet</p>
+            <p className="text-sm">Browse the Marketplace to order fresh fish</p>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Chat Modal */}
@@ -295,11 +328,7 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
                   return (
                     <div key={`media-${i}`} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[70%] bg-white/[0.05] rounded-2xl p-2">
-                        <img
-                          src={item.file_url}
-                          alt="Fish photo"
-                          className="rounded-xl max-w-full max-h-48 object-cover"
-                        />
+                        <img src={item.file_url} alt="Fish" className="rounded-xl max-w-full max-h-48 object-cover" />
                         <p className={`text-[9px] mt-1 ${isMe ? 'text-right' : 'text-left'} text-gray-500`}>
                           {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
@@ -310,11 +339,7 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
                 const isMe = item.sender_name === user?.username
                 return (
                   <div key={`msg-${i}`} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] px-4 py-2 rounded-2xl ${
-                      isMe
-                        ? 'bg-gradient-to-r from-blue-600 to-cyan-500'
-                        : 'bg-white/[0.05]'
-                    }`}>
+                    <div className={`max-w-[70%] px-4 py-2 rounded-2xl ${isMe ? 'bg-gradient-to-r from-blue-600 to-cyan-500' : 'bg-white/[0.05]'}`}>
                       <p className="text-sm text-white">{item.message}</p>
                       <p className={`text-[9px] mt-1 ${isMe ? 'text-white/70' : 'text-gray-500'}`}>
                         {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -330,19 +355,9 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
 
             <div className="p-3 border-t border-white/[0.05] flex gap-2">
               <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                  disabled={uploading}
-                />
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
                 <div className="w-10 h-10 bg-white/[0.03] border border-white/[0.08] rounded-xl flex items-center justify-center hover:bg-white/[0.08] transition-all">
-                  {uploading ? (
-                    <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <ImageIcon size={18} className="text-gray-400" />
-                  )}
+                  {uploading ? <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" /> : <ImageIcon size={18} className="text-gray-400" />}
                 </div>
               </label>
               <input
@@ -353,10 +368,7 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
                 placeholder="Type a message..."
                 className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-400/50"
               />
-              <button
-                onClick={sendChatMessage}
-                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl text-white"
-              >
+              <button onClick={sendChatMessage} className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl text-white">
                 <Send size={16} />
               </button>
             </div>

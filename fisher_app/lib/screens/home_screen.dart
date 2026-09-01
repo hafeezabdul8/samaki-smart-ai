@@ -33,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final screens = [
       DashboardScreen(api: api),
       const OrdersScreen(),
-      if (isFisherman) const UploadProductScreen(),
+      if (isFisherman) const MyProductsScreen(),
       const AlertsScreen(),
       const ForecastScreen(),
       const ProfileScreen(),
@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _navItem(Icons.dashboard_rounded, lang.t('Prices', 'Bei'), 0),
                 _navItem(Icons.receipt_long_rounded, lang.t('Orders', 'Maagizo'), 1),
                 if (isFisherman)
-                  _navItem(Icons.add_circle_outline, lang.t('Sell', 'Uza'), 2),
+                  _navItem(Icons.storefront_rounded, lang.t('Products', 'Bidhaa'), 2),
                 _navItem(
                   Icons.warning_amber_rounded,
                   lang.t('Alerts', 'Tahadhari'),
@@ -71,34 +71,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   lang.t('Profile', 'Wasifu'),
                   isFisherman ? 5 : 4,
                 ),
-                GestureDetector(
-                  onTap: () => lang.toggle(),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.03),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('🇹🇿', style: TextStyle(fontSize: 12)),
-                        const SizedBox(height: 2),
-                        Text(
-                          lang.locale.languageCode == 'en' ? 'EN' : 'SW',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 7, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
         ),
       ),
+      floatingActionButton: isFisherman && _currentIndex == 2
+          ? FloatingActionButton(
+              backgroundColor: AppTheme.blueAccent,
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const UploadProductScreen()),
+                );
+                if (result == true) {
+                  setState(() {});
+                }
+              },
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
     );
   }
 

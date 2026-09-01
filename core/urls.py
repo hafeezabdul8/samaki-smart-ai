@@ -6,7 +6,7 @@ from .views import (RegisterView, PriceFeedView, HotelOrderListCreateView, Predi
                     AdminUserDetailView, AdminResetPasswordView, AdminToggleUserStatusView, AdminAuditLogView,
                     DeviceTokenView, ChatRoomView, ChatMessagesView, SendMessageView, UploadMediaView,
                     FishProductListView, FishProductCreateView, FishProductDetailView, FishProductMineView,
-                    OrderFromProductView, UploadProductPhotoView)
+                    OrderFromProductView, UploadProductPhotoView, AdminReportsView)
 
 
 
@@ -44,5 +44,6 @@ urlpatterns = [
     path('admin/users/<int:pk>/reset-password/', AdminResetPasswordView.as_view(), name='admin_reset_password'),
     path('admin/users/<int:pk>/toggle-status/', AdminToggleUserStatusView.as_view(), name='admin_toggle_status'),
     path('admin/audit-logs/', AdminAuditLogView.as_view(), name='admin_audit_logs'),
+    path('admin/reports/', AdminReportsView.as_view(), name='admin_reports'),
 
 ]
