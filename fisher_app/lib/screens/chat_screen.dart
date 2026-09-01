@@ -54,10 +54,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final auth = context.read<AuthProvider>();
       final token = auth.token;
       
-      if (token == null) {
-        debugPrint('No token available');
-        return;
-      }
+      if (token == null) return;
 
       final res = await http.get(
         Uri.parse('${ApiService.baseUrl}/chat/orders/${widget.orderId}/messages/'),
@@ -77,13 +74,37 @@ class _ChatScreenState extends State<ChatScreen> {
           });
         }
       } else {
-        debugPrint('Fetch messages failed: ${res.statusCode} - ${res.body}');
         if (mounted) setState(() => _loading = false);
       }
     } catch (e) {
-      debugPrint('Fetch error: $e');
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  // Build a combined, time-sorted list of messages and media
+  List<dynamic> get _combinedItems {
+    final items = <dynamic>[];
+    
+    for (var msg in _messages) {
+      items.add({
+        'type': 'message',
+        'data': msg,
+        'time': DateTime.tryParse(msg['created_at']?.toString() ?? '') ?? DateTime.now(),
+        'isMe': msg['sender'] == _currentUserId,
+      });
+    }
+    
+    for (var media in _media) {
+      items.add({
+        'type': 'media',
+        'data': media,
+        'time': DateTime.tryParse(media['created_at']?.toString() ?? '') ?? DateTime.now(),
+        'isMe': media['uploader'] == _currentUserId,
+      });
+    }
+    
+    items.sort((a, b) => a['time'].compareTo(b['time']));
+    return items;
   }
 
   Future<void> _sendMessage() async {
@@ -110,20 +131,14 @@ class _ChatScreenState extends State<ChatScreen> {
         await _fetchMessages();
         _scrollToBottom();
       } else {
-        debugPrint('Send failed: ${res.statusCode} - ${res.body}');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Send failed (${res.statusCode})'),
-              backgroundColor: AppTheme.redAccent,
-            ),
+            SnackBar(content: Text('Send failed (${res.statusCode})'), backgroundColor: AppTheme.redAccent),
           );
         }
-        // Restore text
         _messageCtrl.text = text;
       }
     } catch (e) {
-      debugPrint('Send error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.redAccent),
@@ -152,8 +167,6 @@ class _ChatScreenState extends State<ChatScreen> {
       final auth = context.read<AuthProvider>();
       final token = auth.token;
       
-      debugPrint('Uploading with token: ${token?.substring(0, 20)}...');
-      
       final request = http.MultipartRequest(
         'POST',
         Uri.parse('${ApiService.baseUrl}/chat/orders/${widget.orderId}/media/'),
@@ -165,17 +178,10 @@ class _ChatScreenState extends State<ChatScreen> {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       
-      debugPrint('Upload response: ${response.statusCode}');
-      debugPrint('Upload body: ${response.body}');
-      
       if (response.statusCode == 201) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Image uploaded! ✅'),
-              backgroundColor: AppTheme.emeraldAccent,
-              duration: Duration(seconds: 2),
-            ),
+            const SnackBar(content: Text('Image uploaded! ✅'), backgroundColor: AppTheme.emeraldAccent, duration: Duration(seconds: 2)),
           );
         }
         await _fetchMessages();
@@ -183,15 +189,11 @@ class _ChatScreenState extends State<ChatScreen> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Upload failed (${response.statusCode}). Please re-login.'),
-              backgroundColor: AppTheme.redAccent,
-            ),
+            SnackBar(content: Text('Upload failed (${response.statusCode})'), backgroundColor: AppTheme.redAccent),
           );
         }
       }
     } catch (e) {
-      debugPrint('Upload error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Upload error: $e'), backgroundColor: AppTheme.redAccent),
@@ -224,6 +226,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
+    final combinedItems = _combinedItems;
 
     return Scaffold(
       backgroundColor: AppTheme.primaryBg,
@@ -263,7 +266,7 @@ class _ChatScreenState extends State<ChatScreen> {
           : Column(
               children: [
                 Expanded(
-                  child: _messages.isEmpty && _media.isEmpty
+                  child: combinedItems.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -285,67 +288,16 @@ class _ChatScreenState extends State<ChatScreen> {
                       : ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                          itemCount: _messages.length + _media.length,
+                          itemCount: combinedItems.length,
                           itemBuilder: (context, index) {
-                            if (index < _media.length) {
-                              final media = _media[index];
-                              final isMe = media['uploader'] == _currentUserId;
-                              return Align(
-                                alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                                child: Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.cardBg,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Image.network(
-                                          _getMediaUrl(media['file_url'] ?? ''),
-                                          width: 180,
-                                          height: 180,
-                                          fit: BoxFit.cover,
-                                          loadingBuilder: (context, child, progress) {
-                                            if (progress == null) return child;
-                                            return Container(
-                                              width: 180,
-                                              height: 180,
-                                              color: Colors.grey.shade800,
-                                              child: const Center(
-                                                child: CircularProgressIndicator(color: AppTheme.cyanAccent, strokeWidth: 2),
-                                              ),
-                                            );
-                                          },
-                                          errorBuilder: (_, __, ___) {
-                                            return Container(
-                                              width: 180,
-                                              height: 180,
-                                              color: Colors.grey.shade800,
-                                              child: const Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        media['uploader_name'] ?? '',
-                                        style: TextStyle(color: Colors.grey.shade500, fontSize: 9),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
+                            final item = combinedItems[index];
+                            final isMe = item['isMe'] as bool;
+                            
+                            if (item['type'] == 'media') {
+                              return _buildMediaBubble(item['data'], isMe);
                             }
                             
-                            final msgIndex = index - _media.length;
-                            final msg = _messages[msgIndex];
-                            final isMe = msg['sender'] == _currentUserId;
-                            return _buildMessageBubble(msg, isMe);
+                            return _buildMessageBubble(item['data'], isMe);
                           },
                         ),
                 ),
@@ -479,6 +431,65 @@ class _ChatScreenState extends State<ChatScreen> {
             Text(
               DateTime.parse(msg['created_at']).toLocal().toString().substring(11, 16),
               style: TextStyle(color: isMe ? Colors.white.withValues(alpha: 0.7) : Colors.grey.shade600, fontSize: 9),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMediaBubble(dynamic media, bool isMe) {
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(4),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.65),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBg,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isMe ? 16 : 4),
+            bottomRight: Radius.circular(isMe ? 4 : 16),
+          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                _getMediaUrl(media['file_url'] ?? ''),
+                width: 200,
+                height: 200,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return Container(
+                    width: 200,
+                    height: 200,
+                    color: Colors.grey.shade800,
+                    child: const Center(
+                      child: CircularProgressIndicator(color: AppTheme.cyanAccent, strokeWidth: 2),
+                    ),
+                  );
+                },
+                errorBuilder: (_, __, ___) {
+                  return Container(
+                    width: 200,
+                    height: 200,
+                    color: Colors.grey.shade800,
+                    child: const Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              DateTime.parse(media['created_at']).toLocal().toString().substring(11, 16),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 9),
             ),
           ],
         ),

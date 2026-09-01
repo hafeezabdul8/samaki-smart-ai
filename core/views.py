@@ -2,8 +2,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from .serializers import RegisterSerializer, MarketPriceSerializer, HotelOrderSerializer, HotelOrderCreateSerializer, \
     FishSpeciesDetailSerializer, AdminAuditLogSerializer, AdminUserSerializer, ChatMessageSerializer, \
-    OrderMediaSerializer, ChatRoomSerializer
-from .models import User, MarketPrice, HotelOrder, FishSpecies, AuditLog, ChatRoom, ChatMessage, OrderMedia, DeviceToken
+    OrderMediaSerializer, ChatRoomSerializer, FishProductSerializer, FishProductCreateSerializer
+from .models import User, MarketPrice, HotelOrder, FishSpecies, AuditLog, ChatRoom, ChatMessage, OrderMedia, DeviceToken, FishProduct
 from rest_framework.views import APIView
 from .ml.predict import predict_price, get_smart_recommendations, get_season
 from .ml.forecast import forecast_7_days
@@ -462,7 +462,6 @@ class UploadMediaView(APIView):
         if not file:
             return Response({'error': 'File is required'}, status=400)
 
-        # Upload to Cloudinary
         import cloudinary
         import cloudinary.uploader
         import os
@@ -489,3 +488,131 @@ class UploadMediaView(APIView):
         )
 
         return Response(OrderMediaSerializer(media).data, status=201)
+
+
+class FishProductListView(generics.ListAPIView):
+    """List available products for today."""
+    permission_classes = [permissions.AllowAny]
+    serializer_class = FishProductSerializer
+
+    def get_queryset(self):
+        today = date.today()
+        return FishProduct.objects.filter(
+            status='available',
+            expires_at__gte=today
+        ).select_related('fisherman', 'species').order_by('-created_at')
+
+
+class FishProductCreateView(generics.CreateAPIView):
+    """Fisherman uploads a product."""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FishProductCreateSerializer
+
+    def perform_create(self, serializer):
+        species = serializer.validated_data.get('species')
+        market = serializer.validated_data.get('market', self.request.user.market or 'Malindi Market')
+        quantity = serializer.validated_data.get('quantity_kg', 10)
+
+        # Get AI suggested price
+        try:
+            season = get_season(date.today().month)
+            weather = 'Sunny'
+            ai_price = predict_price(species.name_en, market, season, weather, float(quantity))
+        except Exception:
+            ai_price = None
+
+        product = serializer.save(
+            fisherman=self.request.user,
+            ai_suggested_price=ai_price
+        )
+
+        # Notify all hotel buyers
+        try:
+            from .fcm_utils import send_push_notification
+            buyer_tokens = DeviceToken.objects.filter(
+                user__role='hotel_buyer'
+            ).values_list('fcm_token', flat=True)
+            if buyer_tokens:
+                send_push_notification(
+                    list(buyer_tokens),
+                    title='New Fish Available! 🐟',
+                    body=f'{species.name_en} • {quantity}kg • TZS {product.price_per_kg}/kg',
+                    data={'product_id': str(product.id), 'type': 'new_product'}
+                )
+        except Exception as e:
+            print(f'FCM product notification error: {e}')
+
+        AuditLog.objects.create(
+            user=self.request.user,
+            action='CREATE_PRODUCT',
+            table_name='FishProduct',
+            record_id=product.id
+        )
+
+
+class FishProductMineView(generics.ListAPIView):
+    """Fisherman's own products."""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FishProductSerializer
+
+    def get_queryset(self):
+        return FishProduct.objects.filter(fisherman=self.request.user).order_by('-created_at')
+
+
+class FishProductDetailView(generics.RetrieveAPIView):
+    """Product details."""
+    permission_classes = [permissions.AllowAny]
+    serializer_class = FishProductSerializer
+    queryset = FishProduct.objects.select_related('fisherman', 'species')
+    lookup_field = 'product_id'
+    lookup_url_kwarg = 'product_id'
+
+
+class OrderFromProductView(APIView):
+    """Buyer places order from a specific product."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, product_id):
+        try:
+            product = FishProduct.objects.get(id=product_id, status='available')
+        except FishProduct.DoesNotExist:
+            return Response({'error': 'Product not available'}, status=404)
+
+        if request.user.role != 'hotel_buyer':
+            return Response({'error': 'Only hotel buyers can order'}, status=403)
+
+        quantity = float(request.data.get('quantity_kg', product.quantity_kg))
+        delivery_date = request.data.get('delivery_date', str(date.today() + timedelta(days=1)))
+
+        order = HotelOrder.objects.create(
+            buyer=request.user,
+            species=product.species,
+            quantity_kg=quantity,
+            delivery_date=delivery_date,
+            max_price_tzs=product.price_per_kg,
+            accepted_by=product.fisherman,
+            status='accepted'
+        )
+
+        # Mark product as reserved
+        product.status = 'reserved'
+        product.save()
+
+        # Create chat room immediately
+        ChatRoom.objects.get_or_create(order=order)
+
+        # Notify the fisherman
+        try:
+            from .fcm_utils import send_push_notification
+            fisherman_tokens = DeviceToken.objects.filter(user=product.fisherman).values_list('fcm_token', flat=True)
+            if fisherman_tokens:
+                send_push_notification(
+                    list(fisherman_tokens),
+                    title='New Order! 🛒',
+                    body=f'{request.user.username} ordered {quantity}kg of {product.species.name_en}',
+                    data={'order_id': str(order.id), 'type': 'new_order'}
+                )
+        except Exception as e:
+            print(f'FCM order notification error: {e}')
+
+        return Response(HotelOrderSerializer(order).data, status=201)

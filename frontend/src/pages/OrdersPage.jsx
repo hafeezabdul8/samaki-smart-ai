@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Calendar, ShoppingCart, Clock, Phone, MapPin, Hotel, User, CheckCircle, MessageCircle, Send, X } from 'lucide-react'
+import { Calendar, ShoppingCart, Clock, Phone, MapPin, Hotel, User, CheckCircle, MessageCircle, Send, X, Image as ImageIcon } from 'lucide-react'
 
 const API = 'https://samaki-smart-ai.onrender.com/api/auth'
 
@@ -15,8 +15,10 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
   const [form, setForm] = useState({ species: '', quantity_kg: '', delivery_date: '', max_price_tzs: '' })
   const [chatOrderId, setChatOrderId] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
+  const [chatMedia, setChatMedia] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [chatOtherParty, setChatOtherParty] = useState('')
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     if (chatOrderId) {
@@ -26,6 +28,7 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
             headers: { Authorization: `Bearer ${token}` }
           })
           setChatMessages(res.data.messages || [])
+          setChatMedia(res.data.media || [])
         } catch (e) {}
       }
       fetchMessages()
@@ -51,6 +54,7 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
         headers: { Authorization: `Bearer ${token}` }
       })
       setChatMessages(res.data.messages || [])
+      setChatMedia(res.data.media || [])
     } catch (e) {}
   }
 
@@ -66,8 +70,43 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
         headers: { Authorization: `Bearer ${token}` }
       })
       setChatMessages(res.data.messages || [])
+      setChatMedia(res.data.media || [])
     } catch (e) {}
   }
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('media_type', 'image')
+      
+      await axios.post(`${API}/chat/orders/${chatOrderId}/media/`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        }
+      })
+      
+      const res = await axios.get(`${API}/chat/orders/${chatOrderId}/messages/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setChatMessages(res.data.messages || [])
+      setChatMedia(res.data.media || [])
+    } catch (e) {
+      alert('Image upload failed')
+    }
+    setUploading(false)
+  }
+
+  // Combine messages and media for display
+  const combinedItems = [
+    ...chatMedia.map(m => ({ ...m, itemType: 'media' })),
+    ...chatMessages.map(m => ({ ...m, itemType: 'message' })),
+  ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
@@ -137,13 +176,7 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
                          o.species_name?.includes('Sardine') ? '🐟' :
                          o.species_name?.includes('Shrimp') ? '🦐' :
                          o.species_name?.includes('Parrot') ? '🐠' :
-                         o.species_name?.includes('Rabbit') ? '🐰' :
-                         o.species_name?.includes('Grouper') ? '🐟' :
-                         o.species_name?.includes('Sword') ? '⚔️' :
-                         o.species_name?.includes('Barracuda') ? '🐊' :
-                         o.species_name?.includes('Shark') ? '🦈' :
-                         o.species_name?.includes('Anchovy') ? '🐟' :
-                         o.species_name?.includes('Mackerel') ? '🐟' : '🐟'}
+                         o.species_name?.includes('Rabbit') ? '🐰' : '🐟'}
                       </span>
                       <div>
                         <p className="font-bold text-white">Order #{o.id} - {o.species_name}</p>
@@ -239,7 +272,7 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
       {/* Chat Modal */}
       {chatOrderId && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111827] rounded-2xl border border-white/[0.08] w-full max-w-md h-[500px] flex flex-col">
+          <div className="bg-[#111827] rounded-2xl border border-white/[0.08] w-full max-w-md h-[550px] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-white/[0.05]">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-sm font-bold text-white">
@@ -256,29 +289,62 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {chatMessages.map((msg, i) => {
-                const isMe = msg.sender_name === user?.username
+              {combinedItems.map((item, i) => {
+                if (item.itemType === 'media') {
+                  const isMe = item.uploader_name === user?.username
+                  return (
+                    <div key={`media-${i}`} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      <div className="max-w-[70%] bg-white/[0.05] rounded-2xl p-2">
+                        <img
+                          src={item.file_url}
+                          alt="Fish photo"
+                          className="rounded-xl max-w-full max-h-48 object-cover"
+                        />
+                        <p className={`text-[9px] mt-1 ${isMe ? 'text-right' : 'text-left'} text-gray-500`}>
+                          {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                }
+                const isMe = item.sender_name === user?.username
                 return (
-                  <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                  <div key={`msg-${i}`} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[70%] px-4 py-2 rounded-2xl ${
                       isMe
                         ? 'bg-gradient-to-r from-blue-600 to-cyan-500'
                         : 'bg-white/[0.05]'
                     }`}>
-                      <p className="text-sm text-white">{msg.message}</p>
+                      <p className="text-sm text-white">{item.message}</p>
                       <p className={`text-[9px] mt-1 ${isMe ? 'text-white/70' : 'text-gray-500'}`}>
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>
                 )
               })}
-              {chatMessages.length === 0 && (
+              {combinedItems.length === 0 && (
                 <p className="text-center text-gray-600 text-sm">No messages yet. Say hello!</p>
               )}
             </div>
 
             <div className="p-3 border-t border-white/[0.05] flex gap-2">
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                  disabled={uploading}
+                />
+                <div className="w-10 h-10 bg-white/[0.03] border border-white/[0.08] rounded-xl flex items-center justify-center hover:bg-white/[0.08] transition-all">
+                  {uploading ? (
+                    <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <ImageIcon size={18} className="text-gray-400" />
+                  )}
+                </div>
+              </label>
               <input
                 type="text"
                 value={chatInput}

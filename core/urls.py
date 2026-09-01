@@ -4,7 +4,9 @@ from .views import (RegisterView, PriceFeedView, HotelOrderListCreateView, Predi
                     OrderStatusUpdateView, DemandForecastView, UserProfileView, AdminOrderListView,
                     ProfileUpdateView, SmartRecommendationsView, AdminDashboardView, AdminUserListView,
                     AdminUserDetailView, AdminResetPasswordView, AdminToggleUserStatusView, AdminAuditLogView,
-                    DeviceTokenView, ChatRoomView, ChatMessagesView, SendMessageView, UploadMediaView)
+                    DeviceTokenView, ChatRoomView, ChatMessagesView, SendMessageView, UploadMediaView,
+                    FishProductListView, FishProductCreateView, FishProductDetailView, FishProductMineView,
+                    OrderFromProductView)
 
 
 
@@ -27,6 +29,11 @@ urlpatterns = [
     path('chat/orders/<int:order_id>/messages/', ChatMessagesView.as_view(), name='chat_messages'),
     path('chat/orders/<int:order_id>/send/', SendMessageView.as_view(), name='send_message'),
     path('chat/orders/<int:order_id>/media/', UploadMediaView.as_view(), name='upload_media'),
+    path('products/', FishProductListView.as_view(), name='product_list'),
+    path('products/create/', FishProductCreateView.as_view(), name='product_create'),
+    path('products/my/', FishProductMineView.as_view(), name='product_mine'),
+    path('products/<int:product_id>/', FishProductDetailView.as_view(), name='product_detail'),
+    path('products/<int:product_id>/order/', OrderFromProductView.as_view(), name='order_from_product'),
 
 
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),

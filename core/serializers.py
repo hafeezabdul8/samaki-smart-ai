@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, MarketPrice, FishSpecies, HotelOrder, AuditLog, ChatMessage, OrderMedia, ChatRoom
+from .models import User, MarketPrice, FishSpecies, HotelOrder, AuditLog, ChatMessage, OrderMedia, ChatRoom, FishProduct
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -120,3 +120,26 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatRoom
         fields = ('id', 'order_id', 'buyer_name', 'fisherman_name', 'messages', 'media', 'created_at')
+
+
+
+class FishProductSerializer(serializers.ModelSerializer):
+    fisherman_name = serializers.CharField(source='fisherman.username', read_only=True)
+    fisherman_phone = serializers.CharField(source='fisherman.phone', read_only=True)
+    fisherman_market = serializers.CharField(source='fisherman.market', read_only=True)
+    species_name = serializers.CharField(source='species.name_en', read_only=True)
+    species_name_sw = serializers.CharField(source='species.name_sw', read_only=True)
+
+    class Meta:
+        model = FishProduct
+        fields = ('id', 'fisherman', 'fisherman_name', 'fisherman_phone', 'fisherman_market',
+                  'species', 'species_name', 'species_name_sw', 'photo_url',
+                  'price_per_kg', 'ai_suggested_price', 'quantity_kg', 'market',
+                  'description', 'status', 'created_at', 'expires_at')
+        read_only_fields = ('fisherman', 'ai_suggested_price')
+
+
+class FishProductCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FishProduct
+        fields = ('species', 'photo_url', 'price_per_kg', 'quantity_kg', 'market', 'description', 'expires_at')
