@@ -7,10 +7,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     location = serializers.CharField(required=False, allow_blank=True)
     market = serializers.CharField(required=False, allow_blank=True)
     hotel_name = serializers.CharField(required=False, allow_blank=True)
+    security_question = serializers.CharField(required=False, allow_blank=True)
+    security_answer = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ('username', 'phone', 'password', 'role', 'location', 'market', 'hotel_name')
+        fields = ('username', 'phone', 'password', 'role', 'location', 'market', 'hotel_name',
+                  'security_question', 'security_answer')
 
     def create(self, validated_data):
         location = validated_data.pop('location', '')
@@ -24,6 +27,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             location=location,
             market=market,
             hotel_name=hotel_name,
+            security_question=validated_data.get('security_question', ''),
+            security_answer=validated_data.get('security_answer', ''),
         )
         return user
 

@@ -23,6 +23,9 @@ class User(AbstractUser):
     hotel_name = models.CharField(max_length=200, blank=True, null=True)
     location = models.CharField(max_length=100, blank=True, null=True)
     market = models.CharField(max_length=100, blank=True, null=True)
+    security_question = models.CharField(max_length=200, blank=True, null=True)
+    security_answer = models.CharField(max_length=200, blank=True, null=True)
+
 
     def __str__(self):
         return f"{self.username} ({self.role})"

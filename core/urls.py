@@ -6,7 +6,8 @@ from .views import (RegisterView, PriceFeedView, HotelOrderListCreateView, Predi
                     AdminUserDetailView, AdminResetPasswordView, AdminToggleUserStatusView, AdminAuditLogView,
                     DeviceTokenView, ChatRoomView, ChatMessagesView, SendMessageView, UploadMediaView,
                     FishProductListView, FishProductCreateView, FishProductDetailView, FishProductMineView,
-                    OrderFromProductView, UploadProductPhotoView, AdminReportsView)
+                    OrderFromProductView, UploadProductPhotoView, AdminReportsView, ForgotPasswordView,
+                    ResetPasswordWithSecurityView)
 
 
 
@@ -35,6 +36,8 @@ urlpatterns = [
     path('products/<int:product_id>/', FishProductDetailView.as_view(), name='product_detail'),
     path('products/<int:product_id>/order/', OrderFromProductView.as_view(), name='order_from_product'),
     path('products/upload-photo/', UploadProductPhotoView.as_view(), name='upload_product_photo'),
+    path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
+    path('reset-password/', ResetPasswordWithSecurityView.as_view(), name='reset_password'),
 
 
 

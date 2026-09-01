@@ -201,6 +201,8 @@ class ProfileUpdateView(APIView):
         user.location = request.data.get('location', user.location)
         user.market = request.data.get('market', user.market)
         user.hotel_name = request.data.get('hotel_name', user.hotel_name)
+        user.security_question = request.data.get('security_question', user.security_question)
+        user.security_answer = request.data.get('security_answer', user.security_answer)
         user.save()
 
         AuditLog.objects.create(
@@ -739,3 +741,54 @@ class AdminReportsView(APIView):
             'orders': orders_data,
             'logs': logs_data,
         })
+
+class ForgotPasswordView(APIView):
+    """Get security question for a user."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username', '').strip()
+        if not username:
+            return Response({'error': 'Username is required'}, status=400)
+
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+
+        if not user.security_question:
+            return Response({'error': 'No security question set for this account'}, status=400)
+
+        return Response({
+            'username': username,
+            'security_question': user.security_question,
+        })
+
+
+class ResetPasswordWithSecurityView(APIView):
+    """Reset password using security answer."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username', '').strip()
+        answer = request.data.get('answer', '').strip()
+        new_password = request.data.get('new_password', '').strip()
+
+        if not all([username, answer, new_password]):
+            return Response({'error': 'All fields are required'}, status=400)
+
+        if len(new_password) < 6:
+            return Response({'error': 'Password must be at least 6 characters'}, status=400)
+
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+
+        if user.security_answer.lower() != answer.lower():
+            return Response({'error': 'Incorrect security answer'}, status=400)
+
+        user.set_password(new_password)
+        user.save()
+
+        return Response({'message': 'Password reset successfully'})
