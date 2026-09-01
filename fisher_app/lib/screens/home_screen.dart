@@ -10,6 +10,8 @@ import 'orders_screen.dart';
 import 'alerts_screen.dart';
 import 'forecast_screen.dart';
 import 'profile_screen.dart';
+import 'upload_product_screen.dart';
+import 'my_products_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,10 +27,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final api = context.read<ApiService>();
     final lang = context.watch<LanguageProvider>();
+    final user = context.watch<AuthProvider>().user;
+    final isFisherman = user?['role'] == 'fisherman';
 
     final screens = [
       DashboardScreen(api: api),
       const OrdersScreen(),
+      if (isFisherman) const UploadProductScreen(),
       const AlertsScreen(),
       const ForecastScreen(),
       const ProfileScreen(),
@@ -49,14 +54,28 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _navItem(Icons.dashboard_rounded, lang.t('Prices', 'Bei'), 0),
                 _navItem(Icons.receipt_long_rounded, lang.t('Orders', 'Maagizo'), 1),
-                _navItem(Icons.warning_amber_rounded, lang.t('Alerts', 'Tahadhari'), 2),
-                _navItem(Icons.trending_up_rounded, lang.t('Forecast', 'Utabiri'), 3),
-                _navItem(Icons.person_rounded, lang.t('Profile', 'Wasifu'), 4),
+                if (isFisherman)
+                  _navItem(Icons.add_circle_outline, lang.t('Sell', 'Uza'), 2),
+                _navItem(
+                  Icons.warning_amber_rounded,
+                  lang.t('Alerts', 'Tahadhari'),
+                  isFisherman ? 3 : 2,
+                ),
+                _navItem(
+                  Icons.trending_up_rounded,
+                  lang.t('Forecast', 'Utabiri'),
+                  isFisherman ? 4 : 3,
+                ),
+                _navItem(
+                  Icons.person_rounded,
+                  lang.t('Profile', 'Wasifu'),
+                  isFisherman ? 5 : 4,
+                ),
                 GestureDetector(
                   onTap: () => lang.toggle(),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.03),
                       borderRadius: BorderRadius.circular(14),
@@ -65,11 +84,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('🇹🇿', style: const TextStyle(fontSize: 14)),
+                        const Text('🇹🇿', style: TextStyle(fontSize: 12)),
                         const SizedBox(height: 2),
                         Text(
                           lang.locale.languageCode == 'en' ? 'EN' : 'SW',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 8, fontWeight: FontWeight.w600),
+                          style: TextStyle(color: Colors.grey.shade500, fontSize: 7, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -89,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: () => setState(() => _currentIndex = index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
         decoration: BoxDecoration(
           color: active ? AppTheme.blueAccent : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
@@ -97,13 +116,13 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: active ? Colors.white : Colors.grey.shade500, size: 18),
+            Icon(icon, color: active ? Colors.white : Colors.grey.shade500, size: 16),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
                 color: active ? Colors.white : Colors.grey.shade500,
-                fontSize: 8,
+                fontSize: 7,
                 fontWeight: FontWeight.w600,
               ),
             ),

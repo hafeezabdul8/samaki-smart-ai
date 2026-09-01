@@ -6,6 +6,7 @@ import OrdersPage from './pages/OrdersPage'
 import ForecastPage from './pages/ForecastPage'
 import AdminPage from './pages/AdminPage'
 import ProfilePage from './pages/ProfilePage'
+import MarketplacePage from './pages/MarketplacePage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
 import AdminUserDetailPage from './pages/admin/AdminUserDetailPage'
@@ -88,6 +89,7 @@ export default function App() {
       <Navbar user={user} activeTab={activeTab} setActiveTab={handleTabChange} onLogout={logout} />
       {activeTab === 'dashboard' && !isAdmin && <DashboardPage user={user} prices={prices} alerts={alerts} orders={orders} adminOrders={adminOrders} />}
       {activeTab === 'dashboard' && isAdmin && <AdminDashboardPage token={token} />}
+      {activeTab === 'marketplace' && !isAdmin && <MarketplacePage token={token} user={user} onOrderPlaced={fetchOrders} />}
       {activeTab === 'users' && isAdmin && <AdminUsersPage token={token} onViewUser={(id) => setViewingUserId(id)} />}
       {activeTab === 'orders' && !isAdmin && <OrdersPage token={token} alerts={alerts} orders={orders} user={user} onOrderCreated={fetchOrders} onForecast={getForecast} />}
       {activeTab === 'orders' && isAdmin && <AdminPage tab="orders" adminOrders={adminOrders} alerts={alerts} />}

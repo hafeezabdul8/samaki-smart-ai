@@ -6,7 +6,7 @@ from .views import (RegisterView, PriceFeedView, HotelOrderListCreateView, Predi
                     AdminUserDetailView, AdminResetPasswordView, AdminToggleUserStatusView, AdminAuditLogView,
                     DeviceTokenView, ChatRoomView, ChatMessagesView, SendMessageView, UploadMediaView,
                     FishProductListView, FishProductCreateView, FishProductDetailView, FishProductMineView,
-                    OrderFromProductView)
+                    OrderFromProductView, UploadProductPhotoView)
 
 
 
@@ -34,6 +34,8 @@ urlpatterns = [
     path('products/my/', FishProductMineView.as_view(), name='product_mine'),
     path('products/<int:product_id>/', FishProductDetailView.as_view(), name='product_detail'),
     path('products/<int:product_id>/order/', OrderFromProductView.as_view(), name='order_from_product'),
+    path('products/upload-photo/', UploadProductPhotoView.as_view(), name='upload_product_photo'),
+
 
 
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),

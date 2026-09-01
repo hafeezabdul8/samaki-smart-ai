@@ -1,9 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 
 class ApiService {
-  // Change this to your PC's IP when running on phone
   static const String baseUrl = 'https://samaki-smart-ai.onrender.com/api/auth';
 
   String? token;
@@ -118,7 +118,7 @@ class ApiService {
     if (res.statusCode != 200) throw Exception('Failed to update order');
   }
 
-    Future<void> registerDeviceToken(String fcmToken) async {
+  Future<void> registerDeviceToken(String fcmToken) async {
     final res = await http.post(
       Uri.parse('$baseUrl/device-token/'),
       headers: {
@@ -132,7 +132,7 @@ class ApiService {
     }
   }
 
-    Future<Map<String, dynamic>> getChatMessages(int orderId) async {
+  Future<Map<String, dynamic>> getChatMessages(int orderId) async {
     final res = await http.get(
       Uri.parse('$baseUrl/chat/orders/$orderId/messages/'),
       headers: {'Authorization': 'Bearer $token'},
@@ -152,5 +152,87 @@ class ApiService {
     );
     if (res.statusCode == 201) return jsonDecode(res.body);
     throw Exception('Failed to send message');
+  }
+
+  // Product endpoints
+  Future<List<dynamic>> getProducts() async {
+    final res = await http.get(Uri.parse('$baseUrl/products/'));
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      return data['results'] ?? data;
+    }
+    throw Exception('Failed to load products');
+  }
+
+  Future<List<dynamic>> getMyProducts() async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/products/my/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      return data['results'] ?? data;
+    }
+    throw Exception('Failed to load my products');
+  }
+
+  Future<Map<String, dynamic>> createProduct({
+    required int speciesId,
+    required String photoUrl,
+    required double pricePerKg,
+    required double quantityKg,
+    required String market,
+    String? description,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/products/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'species': speciesId,
+        'photo_url': photoUrl,
+        'price_per_kg': pricePerKg.toString(),
+        'quantity_kg': quantityKg.toString(),
+        'market': market,
+        'description': description ?? '',
+        'expires_at': DateTime.now().add(const Duration(days: 1)).toIso8601String().substring(0, 10),
+      }),
+    );
+    if (res.statusCode == 201) return jsonDecode(res.body);
+    throw Exception('Failed to create product: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> uploadProductPhoto(File file) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/products/upload-photo/'),
+    );
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to upload photo: ${response.body}');
+  }
+
+  Future<Map<String, dynamic>> orderProduct(int productId, {double? quantityKg, String? deliveryDate}) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/products/$productId/order/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        if (quantityKg != null) 'quantity_kg': quantityKg.toString(),
+        if (deliveryDate != null) 'delivery_date': deliveryDate,
+      }),
+    );
+    if (res.statusCode == 201) return jsonDecode(res.body);
+    throw Exception('Failed to order product: ${res.body}');
   }
 }

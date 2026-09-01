@@ -513,7 +513,6 @@ class FishProductCreateView(generics.CreateAPIView):
         market = serializer.validated_data.get('market', self.request.user.market or 'Malindi Market')
         quantity = serializer.validated_data.get('quantity_kg', 10)
 
-        # Get AI suggested price
         try:
             season = get_season(date.today().month)
             weather = 'Sunny'
@@ -526,7 +525,6 @@ class FishProductCreateView(generics.CreateAPIView):
             ai_suggested_price=ai_price
         )
 
-        # Notify all hotel buyers
         try:
             from .fcm_utils import send_push_notification
             buyer_tokens = DeviceToken.objects.filter(
@@ -564,8 +562,6 @@ class FishProductDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = FishProductSerializer
     queryset = FishProduct.objects.select_related('fisherman', 'species')
-    lookup_field = 'product_id'
-    lookup_url_kwarg = 'product_id'
 
 
 class OrderFromProductView(APIView):
@@ -594,14 +590,11 @@ class OrderFromProductView(APIView):
             status='accepted'
         )
 
-        # Mark product as reserved
         product.status = 'reserved'
         product.save()
 
-        # Create chat room immediately
         ChatRoom.objects.get_or_create(order=order)
 
-        # Notify the fisherman
         try:
             from .fcm_utils import send_push_notification
             fisherman_tokens = DeviceToken.objects.filter(user=product.fisherman).values_list('fcm_token', flat=True)
@@ -616,3 +609,29 @@ class OrderFromProductView(APIView):
             print(f'FCM order notification error: {e}')
 
         return Response(HotelOrderSerializer(order).data, status=201)
+
+
+class UploadProductPhotoView(APIView):
+    """Upload product photo to Cloudinary."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'error': 'File is required'}, status=400)
+
+        import cloudinary
+        import cloudinary.uploader
+        import os
+
+        cloudinary.config(
+            cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', 'pjtlpvsm'),
+            api_key=os.environ.get('CLOUDINARY_API_KEY', '257888553696581'),
+            api_secret=os.environ.get('CLOUDINARY_API_SECRET', 'GuQyqbjefVLzks6inkEcayDMuAk'),
+        )
+
+        try:
+            result = cloudinary.uploader.upload(file, resource_type='image')
+            return Response({'url': result['secure_url']})
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
