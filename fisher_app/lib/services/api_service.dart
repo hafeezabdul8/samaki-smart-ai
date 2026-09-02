@@ -252,6 +252,37 @@ class ApiService {
     throw Exception('Failed to order product: ${res.body}');
   }
 
+  Future<Map<String, dynamic>> updateProduct(int productId, {
+    double? pricePerKg,
+    double? quantityKg,
+    String? market,
+    String? description,
+  }) async {
+    final res = await http.patch(
+      Uri.parse('$baseUrl/products/$productId/update/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        if (pricePerKg != null) 'price_per_kg': pricePerKg.toString(),
+        if (quantityKg != null) 'quantity_kg': quantityKg.toString(),
+        if (market != null) 'market': market,
+        if (description != null) 'description': description,
+      }),
+    );
+    if (res.statusCode == 200) return jsonDecode(res.body);
+    throw Exception('Failed to update product: ${res.body}');
+  }
+
+  Future<void> deleteProduct(int productId) async {
+    final res = await http.delete(
+      Uri.parse('$baseUrl/products/$productId/update/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (res.statusCode != 200) throw Exception('Failed to delete product: ${res.body}');
+  }
+
   // Forgot password
   Future<Map<String, dynamic>> forgotPassword(String username) async {
     final res = await http.post(
