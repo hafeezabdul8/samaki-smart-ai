@@ -7,7 +7,7 @@ from .views import (RegisterView, PriceFeedView, HotelOrderListCreateView, Predi
                     DeviceTokenView, ChatRoomView, ChatMessagesView, SendMessageView, UploadMediaView,
                     FishProductListView, FishProductCreateView, FishProductDetailView, FishProductMineView,
                     OrderFromProductView, UploadProductPhotoView, AdminReportsView, ForgotPasswordView,
-                    ResetPasswordWithSecurityView, OrderHistoryView)
+                    ResetPasswordWithSecurityView, OrderHistoryView, FishProductUpdateDeleteView)
 
 
 
@@ -16,7 +16,6 @@ urlpatterns = [
     path('login/', TokenObtainPairView.as_view(), name='login'),
     path('profile/', UserProfileView.as_view(), name='profile'),
     path('profile/update/', ProfileUpdateView.as_view(), name='profile_update'),
-    path('admin/orders/', AdminOrderListView.as_view(), name='admin_orders'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('prices/', PriceFeedView.as_view(), name='price_feed'),
     path('orders/', HotelOrderListCreateView.as_view(), name='orders'),
@@ -31,6 +30,7 @@ urlpatterns = [
     path('chat/orders/<int:order_id>/send/', SendMessageView.as_view(), name='send_message'),
     path('chat/orders/<int:order_id>/media/', UploadMediaView.as_view(), name='upload_media'),
     path('orders/history/', OrderHistoryView.as_view(), name='order_history'),
+    path('products/<int:product_id>/update/', FishProductUpdateDeleteView.as_view(), name='product_update_delete'),
     path('products/', FishProductListView.as_view(), name='product_list'),
     path('products/create/', FishProductCreateView.as_view(), name='product_create'),
     path('products/my/', FishProductMineView.as_view(), name='product_mine'),
@@ -44,6 +44,7 @@ urlpatterns = [
 
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
     path('admin/users/', AdminUserListView.as_view(), name='admin_users'),
+    path('admin/orders/', AdminOrderListView.as_view(), name='admin_orders'),
     path('admin/users/<int:pk>/', AdminUserDetailView.as_view(), name='admin_user_detail'),
     path('admin/users/<int:pk>/reset-password/', AdminResetPasswordView.as_view(), name='admin_reset_password'),
     path('admin/users/<int:pk>/toggle-status/', AdminToggleUserStatusView.as_view(), name='admin_toggle_status'),

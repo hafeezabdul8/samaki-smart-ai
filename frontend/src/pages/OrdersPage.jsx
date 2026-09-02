@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Calendar, ShoppingCart, Clock, Phone, MapPin, User, CheckCircle, MessageCircle, Send, X, Image as ImageIcon, Package, Truck } from 'lucide-react'
+import { Calendar, ShoppingCart, Clock, Phone, MapPin, User, CheckCircle, MessageCircle, Send, X, Image as ImageIcon, History, Package } from 'lucide-react'
 
 const API = 'https://samaki-smart-ai.onrender.com/api/auth'
 
 const orderStatusConfig = {
-  pending: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', label: 'PENDING', icon: Clock },
-  accepted: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20', label: 'ACCEPTED', icon: CheckCircle },
-  fulfilled: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', label: 'FULFILLED', icon: Truck },
-  cancelled: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20', label: 'CANCELLED', icon: X },
+  pending: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', label: 'PENDING' },
+  accepted: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20', label: 'ACCEPTED' },
+  fulfilled: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', label: 'FULFILLED' },
+  cancelled: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20', label: 'CANCELLED' },
 }
 
 export default function OrdersPage({ token, alerts, orders, onOrderCreated, onForecast, user }) {
@@ -19,6 +19,9 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
   const [chatInput, setChatInput] = useState('')
   const [chatOtherParty, setChatOtherParty] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [historyOrders, setHistoryOrders] = useState([])
+  const [historyPeriod, setHistoryPeriod] = useState('all')
   const [showPreOrderForm, setShowPreOrderForm] = useState(false)
 
   useEffect(() => {
@@ -37,6 +40,19 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
       return () => clearInterval(interval)
     }
   }, [chatOrderId, token])
+
+  useEffect(() => {
+    if (showHistory) fetchHistory()
+  }, [showHistory, historyPeriod])
+
+  const fetchHistory = async () => {
+    try {
+      const res = await axios.get(`${API}/orders/history/?period=${historyPeriod}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setHistoryOrders(res.data.results || res.data || [])
+    } catch (e) {}
+  }
 
   const createOrder = async (e) => {
     e.preventDefault()
@@ -109,10 +125,6 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
     ...chatMessages.map(m => ({ ...m, itemType: 'message' })),
   ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
 
-  const pendingOrders = orders.filter(o => o.status === 'pending')
-  const acceptedOrders = orders.filter(o => o.status === 'accepted')
-  const fulfilledOrders = orders.filter(o => o.status === 'fulfilled')
-
   const getSpeciesIcon = (name) => {
     if (name?.includes('Octopus')) return '🐙'
     if (name?.includes('Tuna')) return '🐟'
@@ -132,73 +144,91 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
     return '🐟'
   }
 
+  const displayOrders = showHistory ? historyOrders : orders
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">📋 My Orders</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {showHistory ? '📜 Order History' : '📋 My Orders'}
+          </h1>
           <p className="text-gray-400 text-sm mt-1">
-            {pendingOrders.length} pending • {acceptedOrders.length} accepted • {fulfilledOrders.length} fulfilled
+            {showHistory ? `${historyOrders.length} past orders` : `${orders.length} active orders`}
           </p>
         </div>
-        <button
-          onClick={() => setShowPreOrderForm(!showPreOrderForm)}
-          className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 rounded-xl text-white text-sm font-semibold transition-all flex items-center gap-2"
-        >
-          <Package size={16} /> {showPreOrderForm ? 'Close' : 'Custom Pre-Order'}
-        </button>
+        <div className="flex gap-2">
+          {showHistory && (
+            <select
+              value={historyPeriod}
+              onChange={e => setHistoryPeriod(e.target.value)}
+              className="bg-[#111827] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+            >
+              <option value="all">All Time</option>
+              <option value="daily">Daily</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          )}
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 text-sm font-semibold hover:bg-cyan-500/20 transition-all flex items-center gap-2"
+          >
+            <History size={16} />
+            {showHistory ? 'View Active' : 'History'}
+          </button>
+          {!showHistory && (
+            <button
+              onClick={() => setShowPreOrderForm(!showPreOrderForm)}
+              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 rounded-xl text-white text-sm font-semibold transition-all flex items-center gap-2"
+            >
+              <Package size={16} />
+              Custom Order
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Custom Pre-Order Form */}
-      {showPreOrderForm && (
+      {showPreOrderForm && !showHistory && (
         <div className="bg-[#111827] rounded-2xl border border-white/[0.05] p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-400/20 flex items-center justify-center">
-              <Calendar size={18} className="text-violet-400" />
-            </div>
-            <h2 className="font-bold text-white">Custom Pre-Order</h2>
-          </div>
+          <h2 className="font-bold text-white mb-4">Custom Pre-Order</h2>
           <form onSubmit={createOrder} className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Species</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Species</label>
               <select value={form.species} onChange={e => setForm({...form, species: e.target.value})}
-                className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500/20" required>
+                className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white focus:outline-none" required>
                 <option value="">Select species...</option>
                 {alerts.filter(a => a.status !== 'red').map(a => <option key={a.id} value={a.id}>{a.name_en?.replace(/ *\([^)]*\)/g, '')}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Quantity (kg)</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Quantity (kg)</label>
               <input type="number" value={form.quantity_kg} onChange={e => setForm({...form, quantity_kg: e.target.value})}
-                className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600" placeholder="Min 1 kg" min="1" required />
+                className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white" placeholder="Min 1 kg" required />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Delivery Date</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Delivery Date</label>
               <input type="date" value={form.delivery_date} onChange={e => setForm({...form, delivery_date: e.target.value})}
                 className="w-full bg-[#0d1321] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white" required />
             </div>
             <div className="flex items-end">
-              <button type="submit" className="w-full bg-gradient-to-r from-violet-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                <ShoppingCart size={16} /> Place
+              <button type="submit" className="w-full bg-gradient-to-r from-violet-600 to-purple-600 text-white py-3 rounded-xl font-semibold">
+                Place Order
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Orders List */}
       <div className="space-y-4">
-        {orders.map(o => {
+        {displayOrders.map(o => {
           const s = orderStatusConfig[o.status] || orderStatusConfig.pending
-          const StatusIcon = s.icon
           const hasAccepted = o.accepted_by_name != null
           const isBuyer = user?.role === 'hotel_buyer'
           const otherParty = isBuyer ? (o.accepted_by_name || 'Fisherman') : (o.buyer_name || 'Buyer')
 
           return (
             <div key={o.id} className="bg-[#111827] rounded-2xl border border-white/[0.05] p-5 hover:border-white/[0.1] transition-all">
-              {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{getSpeciesIcon(o.species_name)}</span>
@@ -207,33 +237,28 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
                     <p className="text-xs text-gray-500">{o.quantity_kg} kg • Delivery: {o.delivery_date}</p>
                   </div>
                 </div>
-                <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full ${s.bg} ${s.text} border ${s.border} uppercase tracking-wider flex items-center gap-1`}>
-                  <StatusIcon size={10} /> {s.label}
+                <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full ${s.bg} ${s.text} border ${s.border} uppercase`}>
+                  {s.label}
                 </span>
               </div>
 
-              {/* Order Details */}
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="bg-white/[0.03] rounded-xl p-3 text-center">
-                  <p className="text-xs text-gray-500 mb-1">Quantity</p>
+                  <p className="text-xs text-gray-500">Quantity</p>
                   <p className="font-bold text-white">{o.quantity_kg} kg</p>
                 </div>
                 <div className="bg-white/[0.03] rounded-xl p-3 text-center">
-                  <p className="text-xs text-gray-500 mb-1">Price</p>
+                  <p className="text-xs text-gray-500">Price</p>
                   <p className="font-bold text-white">{o.max_price_tzs ? `TZS ${Number(o.max_price_tzs).toLocaleString()}` : 'Market'}</p>
                 </div>
                 <div className="bg-white/[0.03] rounded-xl p-3 text-center">
-                  <p className="text-xs text-gray-500 mb-1">Delivery</p>
+                  <p className="text-xs text-gray-500">Delivery</p>
                   <p className="font-bold text-white text-sm">{o.delivery_date}</p>
                 </div>
               </div>
 
-              {/* Party Info */}
-              {hasAccepted && (
+              {hasAccepted && !showHistory && (
                 <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-3">
-                  <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
-                    {isBuyer ? '🎣 Fisherman' : '🏨 Buyer'}
-                  </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="flex items-center gap-2">
                       <User size={14} className="text-emerald-400" />
@@ -246,25 +271,20 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
                       <Phone size={14} className="text-emerald-400" />
                       <div>
                         <p className="text-[10px] text-gray-500">Contact</p>
-                        <p className="text-sm text-white font-medium">
-                          {isBuyer ? (o.accepted_by_phone || '—') : (o.buyer_phone || '—')}
-                        </p>
+                        <p className="text-sm text-white font-medium">{isBuyer ? (o.accepted_by_phone || '—') : (o.buyer_phone || '—')}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin size={14} className="text-emerald-400" />
                       <div>
                         <p className="text-[10px] text-gray-500">Location</p>
-                        <p className="text-sm text-white font-medium">
-                          {isBuyer ? (o.accepted_by_market || '—') : (o.buyer_location || '—')}
-                        </p>
+                        <p className="text-sm text-white font-medium">{isBuyer ? (o.accepted_by_market || '—') : (o.buyer_location || '—')}</p>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Fulfilled Badge */}
               {o.status === 'fulfilled' && (
                 <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3 flex items-center justify-center gap-2">
                   <CheckCircle size={16} className="text-emerald-400" />
@@ -272,32 +292,23 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
                 </div>
               )}
 
-              {/* Actions */}
-              <div className="flex gap-2 mt-3">
-                {(o.status === 'accepted' || o.status === 'fulfilled') && hasAccepted && (
-                  <button
-                    onClick={() => openChat(o)}
-                    className="flex-1 py-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 text-sm font-semibold hover:bg-cyan-500/20 transition-all flex items-center justify-center gap-2"
-                  >
-                    <MessageCircle size={16} /> Chat
-                  </button>
-                )}
+              {!showHistory && (o.status === 'accepted' || o.status === 'fulfilled') && hasAccepted && (
                 <button
-                  onClick={() => onForecast(o.species_name, 'Darajani Market')}
-                  className="px-4 py-2.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-lg transition-all border border-cyan-500/20"
+                  onClick={() => openChat(o)}
+                  className="w-full py-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 text-sm font-semibold hover:bg-cyan-500/20 transition-all flex items-center justify-center gap-2 mt-3"
                 >
-                  Forecast
+                  <MessageCircle size={16} /> Chat
                 </button>
-              </div>
+              )}
             </div>
           )
         })}
 
-        {orders.length === 0 && (
+        {displayOrders.length === 0 && (
           <div className="text-center py-16 text-gray-600">
-            <ShoppingCart size={48} className="mb-4 opacity-30 mx-auto" />
-            <p className="font-medium">No orders yet</p>
-            <p className="text-sm">Browse the Marketplace to order fresh fish</p>
+            <p className="text-5xl mb-4">{showHistory ? '📜' : '📋'}</p>
+            <p className="font-medium">{showHistory ? 'No order history' : 'No active orders'}</p>
+            <p className="text-sm">{showHistory ? 'Fulfilled orders will appear here' : 'Browse the Marketplace to order fresh fish'}</p>
           </div>
         )}
       </div>
@@ -324,25 +335,25 @@ export default function OrdersPage({ token, alerts, orders, onOrderCreated, onFo
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {combinedItems.map((item, i) => {
                 if (item.itemType === 'media') {
-                  const isMe = item.uploader_name === user?.username
+                  const isMe = item.uploader_name === user?.username || item.uploader === user?.id
                   return (
                     <div key={`media-${i}`} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div className="max-w-[70%] bg-white/[0.05] rounded-2xl p-2">
+                      <div className={`max-w-[70%] rounded-2xl p-2 ${isMe ? 'bg-gradient-to-r from-blue-600 to-cyan-500' : 'bg-white/[0.05]'}`}>
                         <img src={item.file_url} alt="Fish" className="rounded-xl max-w-full max-h-48 object-cover" />
-                        <p className={`text-[9px] mt-1 ${isMe ? 'text-right' : 'text-left'} text-gray-500`}>
-                          {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <p className={`text-[9px] mt-1 ${isMe ? 'text-white/70' : 'text-gray-500'}`}>
+                          {item.uploader_name || (isMe ? 'You' : 'Other')} • {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                     </div>
                   )
                 }
-                const isMe = item.sender_name === user?.username
+                const isMe = item.sender_name === user?.username || item.sender === user?.id
                 return (
                   <div key={`msg-${i}`} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[70%] px-4 py-2 rounded-2xl ${isMe ? 'bg-gradient-to-r from-blue-600 to-cyan-500' : 'bg-white/[0.05]'}`}>
                       <p className="text-sm text-white">{item.message}</p>
                       <p className={`text-[9px] mt-1 ${isMe ? 'text-white/70' : 'text-gray-500'}`}>
-                        {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {item.sender_name || (isMe ? 'You' : 'Other')} • {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>

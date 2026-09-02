@@ -59,11 +59,9 @@ class HotelOrderListCreateView(generics.ListCreateAPIView):
 
         try:
             from .fcm_utils import send_push_notification
-
             fishermen_tokens = DeviceToken.objects.filter(
                 user__role='fisherman'
             ).values_list('fcm_token', flat=True)
-
             if fishermen_tokens:
                 send_push_notification(
                     list(fishermen_tokens),
@@ -144,6 +142,14 @@ class OrderStatusUpdateView(APIView):
 
         order.status = new_status
         order.save()
+
+        # Auto mark reserved products as sold when order fulfilled
+        if new_status == 'fulfilled':
+            FishProduct.objects.filter(
+                fisherman=order.accepted_by,
+                species=order.species,
+                status='reserved'
+            ).update(status='sold')
 
         AuditLog.objects.create(
             user=request.user,
@@ -613,6 +619,40 @@ class OrderFromProductView(APIView):
             print(f'FCM order notification error: {e}')
 
         return Response(HotelOrderSerializer(order).data, status=201)
+
+
+class FishProductUpdateDeleteView(APIView):
+    """Fisherman can update or delete their product."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, product_id):
+        try:
+            product = FishProduct.objects.get(id=product_id, fisherman=request.user)
+        except FishProduct.DoesNotExist:
+            return Response({'error': 'Product not found'}, status=404)
+
+        if product.status != 'available':
+            return Response({'error': 'Cannot update a reserved/sold product'}, status=400)
+
+        product.price_per_kg = request.data.get('price_per_kg', product.price_per_kg)
+        product.quantity_kg = request.data.get('quantity_kg', product.quantity_kg)
+        product.market = request.data.get('market', product.market)
+        product.description = request.data.get('description', product.description)
+        product.save()
+
+        return Response(FishProductSerializer(product).data)
+
+    def delete(self, request, product_id):
+        try:
+            product = FishProduct.objects.get(id=product_id, fisherman=request.user)
+        except FishProduct.DoesNotExist:
+            return Response({'error': 'Product not found'}, status=404)
+
+        if product.status != 'available':
+            return Response({'error': 'Cannot delete a reserved/sold product'}, status=400)
+
+        product.delete()
+        return Response({'message': 'Product deleted'}, status=200)
 
 
 class UploadProductPhotoView(APIView):
