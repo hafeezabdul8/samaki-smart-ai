@@ -7,6 +7,8 @@ import '../services/api_service.dart';
 import '../services/auth_provider.dart';
 import '../services/language_provider.dart';
 import 'chat_screen.dart';
+import 'order_history_screen.dart';
+import 'login_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -72,6 +74,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
         );
       }
     }
+  }
+
+  void _logout() {
+    final auth = context.read<AuthProvider>();
+    auth.logout();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   Color _statusColor(String status) {
@@ -151,8 +162,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
               style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white),
             ),
             actions: [
+              // History button
+              IconButton(
+                icon: const Icon(Icons.history, color: Colors.grey),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
+                  );
+                },
+              ),
+              // Pending count
               Container(
-                margin: const EdgeInsets.only(right: 16),
+                margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppTheme.amberAccent.withValues(alpha: 0.1),
@@ -168,6 +190,37 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ),
                 ),
               ),
+              // Logout button
+              IconButton(
+                icon: const Icon(Icons.logout, color: AppTheme.redAccent),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: AppTheme.cardBg,
+                      title: Text(lang.t('Logout', 'Toka'), style: const TextStyle(color: Colors.white)),
+                      content: Text(
+                        lang.t('Are you sure you want to logout?', 'Una uhakika unataka kutoka?'),
+                        style: TextStyle(color: Colors.grey.shade400),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: Text(lang.t('Cancel', 'Ghairi'), style: const TextStyle(color: Colors.grey)),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _logout();
+                          },
+                          child: Text(lang.t('Logout', 'Toka'), style: const TextStyle(color: AppTheme.redAccent)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
             ],
           ),
           SliverPadding(
@@ -269,7 +322,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
                                     const SizedBox(height: 14),
 
-                                    // Buyer Info - shown to everyone
                                     ...[
                                       _sectionTitle(lang.t('🏨 Buyer Information', '🏨 Taarifa za Mnunuzi'), color),
                                       const SizedBox(height: 8),
@@ -295,7 +347,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                       const SizedBox(height: 12),
                                     ],
 
-                                    // Fisherman Info - shown to everyone after acceptance
                                     if (hasAcceptedBy) ...[
                                       _sectionTitle(lang.t('🎣 Accepted By', '🎣 Amekubaliwa Na'), AppTheme.emeraldAccent),
                                       const SizedBox(height: 8),

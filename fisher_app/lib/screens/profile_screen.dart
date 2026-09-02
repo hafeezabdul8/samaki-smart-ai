@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/auth_provider.dart';
 import '../services/language_provider.dart';
+import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -97,6 +98,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _saving = false);
   }
 
+  void _logout() {
+    final auth = context.read<AuthProvider>();
+    auth.logout();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  void _showLogoutDialog() {
+    final lang = context.read<LanguageProvider>();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.logout, color: AppTheme.redAccent, size: 24),
+            const SizedBox(width: 10),
+            Text(
+              lang.t('Logout', 'Toka'),
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Text(
+          lang.t('Are you sure you want to logout?', 'Una uhakika unataka kutoka?'),
+          style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              lang.t('Cancel', 'Ghairi'),
+              style: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.only(right: 8, bottom: 8),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _logout();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.redAccent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: Text(
+                lang.t('Logout', 'Toka'),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
@@ -113,6 +175,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             lang.t('My Profile', 'Wasifu Wangu'),
             style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white),
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout, color: AppTheme.redAccent),
+              onPressed: _showLogoutDialog,
+            ),
+            const SizedBox(width: 8),
+          ],
         ),
         SliverPadding(
           padding: const EdgeInsets.all(16),
@@ -178,7 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // User Information Display Card
+              // User Information
               Container(
                 decoration: AppTheme.glassDecoration,
                 padding: const EdgeInsets.all(16),
@@ -187,52 +256,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     Text(
                       lang.t('My Information', 'Taarifa Zangu'),
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16),
                     ),
                     const SizedBox(height: 16),
-                    _infoRow(
-                      Icons.person,
-                      lang.t('Username', 'Jina la Mtumiaji'),
-                      user?['username'] ?? '—',
-                    ),
+                    _infoRow(Icons.person, lang.t('Username', 'Jina la Mtumiaji'), user?['username'] ?? '—'),
                     const SizedBox(height: 12),
-                    _infoRow(
-                      Icons.phone,
-                      lang.t('Phone Number', 'Namba ya Simu'),
-                      user?['phone'] ?? '—',
-                    ),
+                    _infoRow(Icons.phone, lang.t('Phone Number', 'Namba ya Simu'), user?['phone'] ?? '—'),
                     const SizedBox(height: 12),
-                    _infoRow(
-                      Icons.location_on,
-                      lang.t('Location / Area', 'Eneo / Mahali'),
-                      user?['location'] ?? '—',
-                    ),
+                    _infoRow(Icons.location_on, lang.t('Location / Area', 'Eneo / Mahali'), user?['location'] ?? '—'),
                     if (isFisherman) ...[
                       const SizedBox(height: 12),
-                      _infoRow(
-                        Icons.store,
-                        lang.t('Market', 'Soko'),
-                        user?['market'] ?? '—',
-                      ),
+                      _infoRow(Icons.store, lang.t('Market', 'Soko'), user?['market'] ?? '—'),
                     ],
                     if (!isFisherman) ...[
                       const SizedBox(height: 12),
-                      _infoRow(
-                        Icons.business,
-                        lang.t('Hotel Name', 'Jina la Hoteli'),
-                        user?['hotel_name'] ?? '—',
-                      ),
+                      _infoRow(Icons.business, lang.t('Hotel Name', 'Jina la Hoteli'), user?['hotel_name'] ?? '—'),
                     ],
                     const SizedBox(height: 12),
-                    _infoRow(
-                      Icons.verified_user,
-                      lang.t('Account Type', 'Aina ya Akaunti'),
-                      user?['role'] ?? '—',
-                    ),
+                    _infoRow(Icons.verified_user, lang.t('Account Type', 'Aina ya Akaunti'), user?['role'] ?? '—'),
                   ],
                 ),
               ),
@@ -257,10 +298,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(width: 8),
                         Text(
                           lang.t('Edit Profile', 'Hariri Wasifu'),
-                          style: GoogleFonts.inter(
-                            color: AppTheme.blueAccent,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: GoogleFonts.inter(color: AppTheme.blueAccent, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -277,11 +315,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Text(
                         lang.t('Edit Details', 'Hariri Taarifa'),
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16),
                       ),
                       const SizedBox(height: 16),
                       _buildField(lang.t('Phone Number', 'Namba ya Simu'), _phoneCtrl, Icons.phone, TextInputType.phone, 10),
@@ -308,10 +342,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 child: Text(
                                   lang.t('Cancel', 'Ghairi'),
                                   textAlign: TextAlign.center,
-                                  style: GoogleFonts.inter(
-                                    color: Colors.grey.shade400,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: GoogleFonts.inter(color: Colors.grey.shade400, fontWeight: FontWeight.w600),
                                 ),
                               ),
                             ),
@@ -323,18 +354,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [AppTheme.blueAccent, AppTheme.cyanAccent],
-                                  ),
+                                  gradient: const LinearGradient(colors: [AppTheme.blueAccent, AppTheme.cyanAccent]),
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Center(
                                   child: _saving
                                       ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                      : Text(
-                                          lang.t('Save', 'Hifadhi'),
-                                          style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600),
-                                        ),
+                                      : Text(lang.t('Save', 'Hifadhi'), style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
                                 ),
                               ),
                             ),
@@ -344,6 +370,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
+              const SizedBox(height: 16),
+
+              // Logout Button
+              GestureDetector(
+                onTap: _showLogoutDialog,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.redAccent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppTheme.redAccent.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.logout, color: AppTheme.redAccent, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        lang.t('Logout', 'Toka'),
+                        style: GoogleFonts.inter(color: AppTheme.redAccent, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 100),
             ]),
           ),
@@ -356,10 +408,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          lang.t('Market', 'Soko'),
-          style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w600),
-        ),
+        Text(lang.t('Market', 'Soko'), style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -374,29 +423,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               isExpanded: true,
               dropdownColor: AppTheme.cardBg,
               style: const TextStyle(color: Colors.white, fontSize: 14),
-              hint: Text(
-                lang.t('Select Market', 'Chagua Soko'),
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-              ),
               icon: Icon(Icons.store, color: Colors.grey.shade500, size: 18),
-              items: _markets.map((m) {
-                return DropdownMenuItem<String>(
-                  value: m,
-                  child: Row(
-                    children: [
-                      const Text('🏪', style: TextStyle(fontSize: 16)),
-                      const SizedBox(width: 8),
-                      Text(m, style: const TextStyle(fontSize: 14)),
-                    ],
-                  ),
-                );
-              }).toList(),
-              onChanged: (val) {
-                setState(() {
-                  _selectedMarket = val;
-                  _marketCtrl.text = val ?? '';
-                });
-              },
+              items: _markets.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(fontSize: 14)))).toList(),
+              onChanged: (val) => setState(() => _selectedMarket = val),
             ),
           ),
         ),
@@ -422,19 +451,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
-              ),
+              Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
               const SizedBox(height: 2),
-              Text(
-                value,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
+              Text(value, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
             ],
           ),
         ),
@@ -453,9 +472,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: const TextStyle(color: Colors.white),
           keyboardType: type,
           maxLength: maxLength,
-          inputFormatters: type == TextInputType.phone
-              ? [FilteringTextInputFormatter.digitsOnly]
-              : null,
+          inputFormatters: type == TextInputType.phone ? [FilteringTextInputFormatter.digitsOnly] : null,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.grey.shade500, size: 18),
             counterText: '',

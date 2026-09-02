@@ -39,8 +39,15 @@ class HotelOrderListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'hotel_buyer':
-            return HotelOrder.objects.filter(buyer=user).order_by('-created_at')
-        return HotelOrder.objects.select_related('buyer', 'species').all().order_by('-created_at')
+            return HotelOrder.objects.filter(
+                buyer=user,
+                status__in=['pending', 'accepted']
+            ).order_by('-created_at')
+        return HotelOrder.objects.select_related('buyer', 'species').filter(
+            Q(accepted_by=user) | Q(status='pending')
+        ).filter(
+            status__in=['pending', 'accepted']
+        ).order_by('-created_at')
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -493,7 +500,6 @@ class UploadMediaView(APIView):
 
 
 class FishProductListView(generics.ListAPIView):
-    """List available products for today."""
     permission_classes = [permissions.AllowAny]
     serializer_class = FishProductSerializer
 
@@ -506,7 +512,6 @@ class FishProductListView(generics.ListAPIView):
 
 
 class FishProductCreateView(generics.CreateAPIView):
-    """Fisherman uploads a product."""
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = FishProductCreateSerializer
 
@@ -551,7 +556,6 @@ class FishProductCreateView(generics.CreateAPIView):
 
 
 class FishProductMineView(generics.ListAPIView):
-    """Fisherman's own products."""
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = FishProductSerializer
 
@@ -560,14 +564,12 @@ class FishProductMineView(generics.ListAPIView):
 
 
 class FishProductDetailView(generics.RetrieveAPIView):
-    """Product details."""
     permission_classes = [permissions.AllowAny]
     serializer_class = FishProductSerializer
     queryset = FishProduct.objects.select_related('fisherman', 'species')
 
 
 class OrderFromProductView(APIView):
-    """Buyer places order from a specific product."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, product_id):
@@ -614,7 +616,6 @@ class OrderFromProductView(APIView):
 
 
 class UploadProductPhotoView(APIView):
-    """Upload product photo to Cloudinary."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -640,20 +641,18 @@ class UploadProductPhotoView(APIView):
 
 
 class AdminReportsView(APIView):
-    """Generate reports with filters."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         if request.user.role != 'admin':
             return Response({'error': 'Unauthorized'}, status=403)
 
-        report_type = request.query_params.get('type', 'orders')  # orders, logs, transactions
+        report_type = request.query_params.get('type', 'orders')
         status_filter = request.query_params.get('status', 'all')
-        period = request.query_params.get('period', 'all')  # today, 2days, 7days, 30days, monthly, yearly, all
+        period = request.query_params.get('period', 'all')
 
         now = timezone.now()
 
-        # Calculate time range
         if period == 'today':
             start_date = now - timedelta(hours=24)
         elif period == '2days':
@@ -671,7 +670,6 @@ class AdminReportsView(APIView):
         else:
             start_date = None
 
-        # Build queryset
         orders_qs = HotelOrder.objects.select_related('buyer', 'species', 'accepted_by').all()
         logs_qs = AuditLog.objects.select_related('user').all()
 
@@ -682,7 +680,6 @@ class AdminReportsView(APIView):
         if status_filter != 'all':
             orders_qs = orders_qs.filter(status=status_filter)
 
-        # Summary
         total_orders = orders_qs.count()
         pending_count = orders_qs.filter(status='pending').count()
         accepted_count = orders_qs.filter(status='accepted').count()
@@ -690,7 +687,6 @@ class AdminReportsView(APIView):
         cancelled_count = orders_qs.filter(status='cancelled').count()
         total_value = orders_qs.aggregate(total=Sum('max_price_tzs'))['total'] or 0
 
-        # Order details
         orders_data = []
         for order in orders_qs[:200]:
             orders_data.append({
@@ -712,7 +708,6 @@ class AdminReportsView(APIView):
                 'delivery_date': str(order.delivery_date),
             })
 
-        # System logs
         logs_data = []
         for log in logs_qs[:100]:
             logs_data.append({
@@ -742,8 +737,8 @@ class AdminReportsView(APIView):
             'logs': logs_data,
         })
 
+
 class ForgotPasswordView(APIView):
-    """Get security question for a user."""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -766,7 +761,6 @@ class ForgotPasswordView(APIView):
 
 
 class ResetPasswordWithSecurityView(APIView):
-    """Reset password using security answer."""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -792,3 +786,27 @@ class ResetPasswordWithSecurityView(APIView):
         user.save()
 
         return Response({'message': 'Password reset successfully'})
+
+
+class OrderHistoryView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = HotelOrderSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = HotelOrder.objects.filter(
+            Q(buyer=user) | Q(accepted_by=user)
+        ).filter(
+            Q(status='fulfilled') | Q(status='cancelled')
+        ).select_related('buyer', 'species', 'accepted_by').order_by('-created_at')
+
+        period = self.request.query_params.get('period', 'all')
+        now = timezone.now()
+        if period == 'daily':
+            queryset = queryset.filter(created_at__gte=now - timedelta(days=1))
+        elif period == 'monthly':
+            queryset = queryset.filter(created_at__gte=now - timedelta(days=30))
+        elif period == 'yearly':
+            queryset = queryset.filter(created_at__gte=now - timedelta(days=365))
+
+        return queryset

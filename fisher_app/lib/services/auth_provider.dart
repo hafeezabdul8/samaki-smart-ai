@@ -26,11 +26,13 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> register(
-      String username, String phone, String password, String role) async {
+      String username, String phone, String password, String role,
+      {String? securityQuestion, String? securityAnswer}) async {
     _loading = true;
     notifyListeners();
     try {
-      await _api.register(username, phone, password, role);
+      await _api.register(username, phone, password, role,
+          securityQuestion: securityQuestion, securityAnswer: securityAnswer);
     } catch (e) {
       rethrow;
     } finally {

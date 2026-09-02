@@ -23,7 +23,8 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> register(
-      String username, String phone, String password, String role) async {
+      String username, String phone, String password, String role,
+      {String? securityQuestion, String? securityAnswer}) async {
     final res = await http.post(
       Uri.parse('$baseUrl/register/'),
       headers: {'Content-Type': 'application/json'},
@@ -32,6 +33,8 @@ class ApiService {
         'phone': phone,
         'password': password,
         'role': role,
+        if (securityQuestion != null && securityQuestion.isNotEmpty) 'security_question': securityQuestion,
+        if (securityAnswer != null && securityAnswer.isNotEmpty) 'security_answer': securityAnswer,
       }),
     );
     if (res.statusCode == 201) return jsonDecode(res.body);
@@ -52,12 +55,16 @@ class ApiService {
     String? location,
     String? market,
     String? hotelName,
+    String? securityQuestion,
+    String? securityAnswer,
   }) async {
     final body = <String, dynamic>{};
     if (phone != null) body['phone'] = phone;
     if (location != null) body['location'] = location;
     if (market != null) body['market'] = market;
     if (hotelName != null) body['hotel_name'] = hotelName;
+    if (securityQuestion != null) body['security_question'] = securityQuestion;
+    if (securityAnswer != null) body['security_answer'] = securityAnswer;
 
     final res = await http.patch(
       Uri.parse('$baseUrl/profile/update/'),
@@ -104,6 +111,15 @@ class ApiService {
     );
     if (res.statusCode == 200) return jsonDecode(res.body)['results'];
     throw Exception('Failed to load orders');
+  }
+
+  Future<List<dynamic>> getOrderHistory(String period) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/orders/history/?period=$period'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (res.statusCode == 200) return jsonDecode(res.body)['results'];
+    throw Exception('Failed to load order history');
   }
 
   Future<void> updateOrderStatus(int orderId, String status) async {
@@ -234,5 +250,34 @@ class ApiService {
     );
     if (res.statusCode == 201) return jsonDecode(res.body);
     throw Exception('Failed to order product: ${res.body}');
+  }
+
+  // Forgot password
+  Future<Map<String, dynamic>> forgotPassword(String username) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/forgot-password/'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'username': username}),
+    );
+    if (res.statusCode == 200) return jsonDecode(res.body);
+    throw Exception(jsonDecode(res.body)['error'] ?? 'User not found');
+  }
+
+  Future<Map<String, dynamic>> resetPassword({
+    required String username,
+    required String answer,
+    required String newPassword,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/reset-password/'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': username,
+        'answer': answer,
+        'new_password': newPassword,
+      }),
+    );
+    if (res.statusCode == 200) return jsonDecode(res.body);
+    throw Exception(jsonDecode(res.body)['error'] ?? 'Reset failed');
   }
 }
