@@ -2,14 +2,18 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from .serializers import RegisterSerializer, MarketPriceSerializer, HotelOrderSerializer, HotelOrderCreateSerializer, \
     FishSpeciesDetailSerializer, AdminAuditLogSerializer, AdminUserSerializer, ChatMessageSerializer, \
-    OrderMediaSerializer, ChatRoomSerializer, FishProductSerializer, FishProductCreateSerializer
-from .models import User, MarketPrice, HotelOrder, FishSpecies, AuditLog, ChatRoom, ChatMessage, OrderMedia, DeviceToken, FishProduct
+    OrderMediaSerializer, ChatRoomSerializer, FishProductSerializer, FishProductCreateSerializer, \
+    DeliveryAssignmentSerializer, PaymentSerializer
+from .models import User, MarketPrice, HotelOrder, FishSpecies, AuditLog, ChatRoom, ChatMessage, OrderMedia, \
+    DeviceToken, FishProduct, DeliveryAssignment, Payment
 from rest_framework.views import APIView
 from .ml.predict import predict_price, get_smart_recommendations, get_season
 from .ml.forecast import forecast_7_days
 from datetime import date, timedelta
 from django.utils import timezone
 from django.db.models import Count, Sum, Q
+import string
+import random
 
 
 class RegisterView(generics.CreateAPIView):
@@ -850,3 +854,256 @@ class OrderHistoryView(generics.ListAPIView):
             queryset = queryset.filter(created_at__gte=now - timedelta(days=365))
 
         return queryset
+
+
+
+
+class GeneratePaymentView(APIView):
+    """Generate control number for payment."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, order_id):
+        try:
+            order = HotelOrder.objects.get(id=order_id)
+        except HotelOrder.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+
+        if request.user != order.buyer:
+            return Response({'error': 'Only buyer can initiate payment'}, status=403)
+
+        # Check if payment already exists
+        payment = Payment.objects.filter(order=order).first()
+        if payment and payment.status in ['approved']:
+            return Response({'error': 'Payment already approved'}, status=400)
+
+        # Generate control number
+        date_str = timezone.now().strftime('%Y%m%d')
+        random_digits = ''.join(random.choices(string.digits, k=5))
+        control_number = f'SAMAKI-{date_str}-{random_digits}'
+
+        # Amount = quantity * price_per_kg
+        amount = order.quantity_kg * (order.max_price_tzs or 0)
+
+        if payment:
+            payment.control_number = control_number
+            payment.amount_tzs = amount
+            payment.status = 'pending'
+            payment.save()
+        else:
+            payment = Payment.objects.create(
+                order=order,
+                control_number=control_number,
+                amount_tzs=amount,
+            )
+
+        # Notify fisherman
+        try:
+            from .fcm_utils import send_push_notification
+            fisherman_tokens = DeviceToken.objects.filter(user=order.accepted_by).values_list('fcm_token', flat=True)
+            if fisherman_tokens:
+                send_push_notification(
+                    list(fisherman_tokens),
+                    title='Payment Pending 💳',
+                    body=f'Control: {control_number} • TZS {amount}',
+                    data={'order_id': str(order.id), 'type': 'payment_pending'}
+                )
+        except Exception as e:
+            print(f'FCM payment notification error: {e}')
+
+        return Response(PaymentSerializer(payment).data, status=201)
+
+
+class UploadReceiptView(APIView):
+    """Buyer uploads payment receipt."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, order_id):
+        try:
+            order = HotelOrder.objects.get(id=order_id)
+        except HotelOrder.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+
+        if request.user != order.buyer:
+            return Response({'error': 'Only buyer can upload receipt'}, status=403)
+
+        try:
+            payment = Payment.objects.get(order=order)
+        except Payment.DoesNotExist:
+            return Response({'error': 'Generate payment first'}, status=404)
+
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'error': 'File is required'}, status=400)
+
+        # Upload to Cloudinary
+        import cloudinary
+        import cloudinary.uploader
+        import os
+
+        cloudinary.config(
+            cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', 'pjtlpvsm'),
+            api_key=os.environ.get('CLOUDINARY_API_KEY', '257888553696581'),
+            api_secret=os.environ.get('CLOUDINARY_API_SECRET', 'GuQyqbjefVLzks6inkEcayDMuAk'),
+        )
+
+        try:
+            result = cloudinary.uploader.upload(file, resource_type='image')
+            payment.receipt_url = result['secure_url']
+            payment.status = 'paid'
+            payment.paid_at = timezone.now()
+            payment.save()
+
+            # Notify fisherman
+            try:
+                from .fcm_utils import send_push_notification
+                fisherman_tokens = DeviceToken.objects.filter(user=order.accepted_by).values_list('fcm_token', flat=True)
+                if fisherman_tokens:
+                    send_push_notification(
+                        list(fisherman_tokens),
+                        title='Receipt Uploaded 📄',
+                        body=f'{request.user.username} uploaded payment receipt',
+                        data={'order_id': str(order.id), 'type': 'receipt_uploaded'}
+                    )
+            except Exception as e:
+                print(f'FCM receipt notification error: {e}')
+
+        except Exception as e:
+            return Response({'error': f'Cloudinary upload failed: {e}'}, status=500)
+
+        return Response(PaymentSerializer(payment).data)
+
+
+class ApprovePaymentView(APIView):
+    """Fisherman approves payment."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, order_id):
+        try:
+            order = HotelOrder.objects.get(id=order_id)
+        except HotelOrder.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+
+        if request.user != order.accepted_by:
+            return Response({'error': 'Only fisherman can approve'}, status=403)
+
+        try:
+            payment = Payment.objects.get(order=order)
+        except Payment.DoesNotExist:
+            return Response({'error': 'Payment not found'}, status=404)
+
+        payment.status = 'approved'
+        payment.approved_at = timezone.now()
+        payment.approved_by = request.user
+        payment.save()
+
+        # Notify buyer
+        try:
+            from .fcm_utils import send_push_notification
+            buyer_tokens = DeviceToken.objects.filter(user=order.buyer).values_list('fcm_token', flat=True)
+            if buyer_tokens:
+                send_push_notification(
+                    list(buyer_tokens),
+                    title='Payment Approved ✅',
+                    body=f'Your payment for Order #{order.id} was approved',
+                    data={'order_id': str(order.id), 'type': 'payment_approved'}
+                )
+        except Exception as e:
+            print(f'FCM approval notification error: {e}')
+
+        return Response(PaymentSerializer(payment).data)
+
+
+class RejectPaymentView(APIView):
+    """Fisherman rejects payment."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, order_id):
+        try:
+            order = HotelOrder.objects.get(id=order_id)
+        except HotelOrder.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+
+        if request.user != order.accepted_by:
+            return Response({'error': 'Only fisherman can reject'}, status=403)
+
+        try:
+            payment = Payment.objects.get(order=order)
+        except Payment.DoesNotExist:
+            return Response({'error': 'Payment not found'}, status=404)
+
+        payment.status = 'rejected'
+        payment.save()
+
+        return Response(PaymentSerializer(payment).data)
+
+
+class AssignDeliveryView(APIView):
+    """Fisherman assigns delivery person."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, order_id):
+        try:
+            order = HotelOrder.objects.get(id=order_id)
+        except HotelOrder.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+
+        if request.user != order.accepted_by:
+            return Response({'error': 'Only fisherman can assign delivery'}, status=403)
+
+        delivery_person_name = request.data.get('delivery_person_name')
+        delivery_person_phone = request.data.get('delivery_person_phone')
+        estimated_time = request.data.get('estimated_time')
+        meeting_area = request.data.get('meeting_area')
+
+        if not all([delivery_person_name, delivery_person_phone, estimated_time, meeting_area]):
+            return Response({'error': 'All delivery fields are required'}, status=400)
+
+        delivery, created = DeliveryAssignment.objects.update_or_create(
+            order=order,
+            defaults={
+                'delivery_person_name': delivery_person_name,
+                'delivery_person_phone': delivery_person_phone,
+                'estimated_time': estimated_time,
+                'meeting_area': meeting_area,
+                'assigned_by': request.user,
+            }
+        )
+
+        # Notify buyer
+        try:
+            from .fcm_utils import send_push_notification
+            buyer_tokens = DeviceToken.objects.filter(user=order.buyer).values_list('fcm_token', flat=True)
+            if buyer_tokens:
+                send_push_notification(
+                    list(buyer_tokens),
+                    title='Delivery Assigned 🚚',
+                    body=f'{delivery_person_name} will deliver • {estimated_time}',
+                    data={'order_id': str(order.id), 'type': 'delivery_assigned'}
+                )
+        except Exception as e:
+            print(f'FCM delivery notification error: {e}')
+
+        return Response(DeliveryAssignmentSerializer(delivery).data, status=201)
+
+
+class GetOrderDetailsView(APIView):
+    """Get full order details including payment and delivery."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, order_id):
+        try:
+            order = HotelOrder.objects.get(id=order_id)
+        except HotelOrder.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+
+        if request.user != order.buyer and request.user != order.accepted_by:
+            return Response({'error': 'Unauthorized'}, status=403)
+
+        payment = Payment.objects.filter(order=order).first()
+        delivery = DeliveryAssignment.objects.filter(order=order).first()
+
+        return Response({
+            'order': HotelOrderSerializer(order).data,
+            'payment': PaymentSerializer(payment).data if payment else None,
+            'delivery': DeliveryAssignmentSerializer(delivery).data if delivery else None,
+        })

@@ -179,3 +179,46 @@ class FishProduct(models.Model):
 
     def __str__(self):
         return f'{self.fisherman.username} - {self.species.name_en} - {self.quantity_kg}kg @ TZS {self.price_per_kg}'
+
+
+class Payment(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    order = models.OneToOneField(HotelOrder, on_delete=models.CASCADE, related_name='payment')
+    control_number = models.CharField(max_length=30, unique=True)
+    amount_tzs = models.DecimalField(max_digits=12, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    receipt_url = models.URLField(max_length=500, blank=True, null=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_payments')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Payment {self.control_number} - {self.status}'
+
+
+class DeliveryAssignment(models.Model):
+    STATUS_CHOICES = [
+        ('assigned', 'Assigned'),
+        ('in_transit', 'In Transit'),
+        ('delivered', 'Delivered'),
+    ]
+    order = models.OneToOneField(HotelOrder, on_delete=models.CASCADE, related_name='delivery')
+    delivery_person_name = models.CharField(max_length=100)
+    delivery_person_phone = models.CharField(max_length=15)
+    estimated_time = models.CharField(max_length=50)
+    meeting_area = models.CharField(max_length=200)
+    assigned_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='delivery_assignments')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='assigned')
+
+    def __str__(self):
+        return f'Delivery for Order #{self.order.id} - {self.delivery_person_name}'

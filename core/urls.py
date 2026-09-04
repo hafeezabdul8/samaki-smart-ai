@@ -7,7 +7,8 @@ from .views import (RegisterView, PriceFeedView, HotelOrderListCreateView, Predi
                     DeviceTokenView, ChatRoomView, ChatMessagesView, SendMessageView, UploadMediaView,
                     FishProductListView, FishProductCreateView, FishProductDetailView, FishProductMineView,
                     OrderFromProductView, UploadProductPhotoView, AdminReportsView, ForgotPasswordView,
-                    ResetPasswordWithSecurityView, OrderHistoryView, FishProductUpdateDeleteView)
+                    ResetPasswordWithSecurityView, OrderHistoryView, FishProductUpdateDeleteView, GeneratePaymentView,
+                    UploadReceiptView, ApprovePaymentView, RejectPaymentView, AssignDeliveryView, GetOrderDetailsView)
 
 
 
@@ -39,6 +40,12 @@ urlpatterns = [
     path('products/upload-photo/', UploadProductPhotoView.as_view(), name='upload_product_photo'),
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
     path('reset-password/', ResetPasswordWithSecurityView.as_view(), name='reset_password'),
+    path('orders/<int:order_id>/payment/', GeneratePaymentView.as_view(), name='generate_payment'),
+    path('orders/<int:order_id>/payment/receipt/', UploadReceiptView.as_view(), name='upload_receipt'),
+    path('orders/<int:order_id>/payment/approve/', ApprovePaymentView.as_view(), name='approve_payment'),
+    path('orders/<int:order_id>/payment/reject/', RejectPaymentView.as_view(), name='reject_payment'),
+    path('orders/<int:order_id>/delivery/', AssignDeliveryView.as_view(), name='assign_delivery'),
+    path('orders/<int:order_id>/details/', GetOrderDetailsView.as_view(), name='order_details'),
 
 
 

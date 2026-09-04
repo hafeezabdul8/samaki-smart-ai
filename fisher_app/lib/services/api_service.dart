@@ -311,4 +311,90 @@ class ApiService {
     if (res.statusCode == 200) return jsonDecode(res.body);
     throw Exception(jsonDecode(res.body)['error'] ?? 'Reset failed');
   }
+
+    // Payment endpoints
+  Future<Map<String, dynamic>> generatePayment(int orderId) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/orders/$orderId/payment/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (res.statusCode == 201 || res.statusCode == 200) return jsonDecode(res.body);
+    throw Exception('Failed to generate payment: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> uploadReceipt(int orderId, File file) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/orders/$orderId/payment/receipt/'),
+    );
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to upload receipt: ${response.body}');
+  }
+
+  Future<Map<String, dynamic>> approvePayment(int orderId) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/orders/$orderId/payment/approve/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (res.statusCode == 200) return jsonDecode(res.body);
+    throw Exception('Failed to approve payment: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> rejectPayment(int orderId) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/orders/$orderId/payment/reject/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (res.statusCode == 200) return jsonDecode(res.body);
+    throw Exception('Failed to reject payment: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> assignDelivery(
+    int orderId, {
+    required String deliveryPersonName,
+    required String deliveryPersonPhone,
+    required String estimatedTime,
+    required String meetingArea,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/orders/$orderId/delivery/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'delivery_person_name': deliveryPersonName,
+        'delivery_person_phone': deliveryPersonPhone,
+        'estimated_time': estimatedTime,
+        'meeting_area': meetingArea,
+      }),
+    );
+    if (res.statusCode == 201 || res.statusCode == 200) return jsonDecode(res.body);
+    throw Exception('Failed to assign delivery: ${res.body}');
+  }
+
+  Future<Map<String, dynamic>> getOrderDetails(int orderId) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/orders/$orderId/details/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (res.statusCode == 200) return jsonDecode(res.body);
+    throw Exception('Failed to get order details: ${res.body}');
+  }
 }

@@ -9,6 +9,7 @@ import '../services/language_provider.dart';
 import 'chat_screen.dart';
 import 'order_history_screen.dart';
 import 'login_screen.dart';
+import 'payment_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -82,6 +83,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
+    );
+  }
+
+  void _openPayment(int orderId, bool isFisherman) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentScreen(orderId: orderId, isFisherman: isFisherman),
+      ),
     );
   }
 
@@ -162,7 +172,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
               style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white),
             ),
             actions: [
-              // History button
               IconButton(
                 icon: const Icon(Icons.history, color: Colors.grey),
                 onPressed: () {
@@ -172,7 +181,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   );
                 },
               ),
-              // Pending count
               Container(
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -190,7 +198,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ),
                 ),
               ),
-              // Logout button
               IconButton(
                 icon: const Icon(Icons.logout, color: AppTheme.redAccent),
                 onPressed: () {
@@ -245,10 +252,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                lang.t(
-                                  'Hotel pre-orders will appear here',
-                                  'Maagizo ya hoteli yataonekana hapa',
-                                ),
+                                lang.t('Hotel pre-orders will appear here', 'Maagizo ya hoteli yataonekana hapa'),
                                 style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
                                 textAlign: TextAlign.center,
                               ),
@@ -276,27 +280,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   children: [
                                     Row(
                                       children: [
-                                        Text(
-                                          _getIcon(order['species_name']),
-                                          style: const TextStyle(fontSize: 36),
-                                        ),
+                                        Text(_getIcon(order['species_name']), style: const TextStyle(fontSize: 36)),
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                '${lang.t('Order', 'Agizo')} #${order['id']}',
-                                                style: GoogleFonts.inter(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.white,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                              Text(
-                                                order['species_name'] ?? 'Unknown',
-                                                style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                                              ),
+                                              Text('${lang.t('Order', 'Agizo')} #${order['id']}',
+                                                style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 16)),
+                                              Text(order['species_name'] ?? 'Unknown',
+                                                style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
                                             ],
                                           ),
                                         ),
@@ -309,17 +302,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                           ),
                                           child: Text(
                                             _statusLabel(status, lang),
-                                            style: TextStyle(
-                                              color: color,
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w800,
-                                              letterSpacing: 1,
-                                            ),
+                                            style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1),
                                           ),
                                         ),
                                       ],
                                     ),
-
                                     const SizedBox(height: 14),
 
                                     ...[
@@ -382,13 +369,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                         children: [
                                           _detailChip('📦', '${order['quantity_kg']} kg', lang.t('Quantity', 'Kiasi')),
                                           _detailChip('📅', order['delivery_date'] ?? 'N/A', lang.t('Delivery', 'Uwasilishaji')),
-                                          _detailChip(
-                                            '💰',
-                                            order['max_price_tzs'] != null
-                                                ? 'TZS ${order['max_price_tzs']}'
-                                                : lang.t('Market price', 'Bei ya soko'),
-                                            lang.t('Max Price', 'Bei ya Juu'),
-                                          ),
+                                          _detailChip('💰', order['max_price_tzs'] != null ? 'TZS ${order['max_price_tzs']}' : lang.t('Market price', 'Bei ya soko'), lang.t('Max Price', 'Bei ya Juu')),
                                         ],
                                       ),
                                     ),
@@ -401,26 +382,39 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                           width: double.infinity,
                                           padding: const EdgeInsets.symmetric(vertical: 14),
                                           decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              colors: [AppTheme.blueAccent, AppTheme.cyanAccent],
-                                            ),
+                                            gradient: const LinearGradient(colors: [AppTheme.blueAccent, AppTheme.cyanAccent]),
                                             borderRadius: BorderRadius.circular(14),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: AppTheme.blueAccent.withValues(alpha: 0.3),
-                                                blurRadius: 10,
-                                                offset: const Offset(0, 4),
+                                            boxShadow: [BoxShadow(color: AppTheme.blueAccent.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                                          ),
+                                          child: Text(lang.t('Accept Order', 'Kubali Agizo'), textAlign: TextAlign.center,
+                                            style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+                                        ),
+                                      ),
+                                    ],
+
+                                    // Payment button
+                                    if (status == 'accepted') ...[
+                                      const SizedBox(height: 8),
+                                      GestureDetector(
+                                        onTap: () => _openPayment(order['id'], isFisherman),
+                                        child: Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.amberAccent.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(14),
+                                            border: Border.all(color: AppTheme.amberAccent.withValues(alpha: 0.3)),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(Icons.payment, color: AppTheme.amberAccent, size: 16),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                isFisherman ? lang.t('Payment & Delivery', 'Malipo na Usafirishaji') : lang.t('Pay Now', 'Lipa Sasa'),
+                                                style: GoogleFonts.inter(color: AppTheme.amberAccent, fontWeight: FontWeight.w600, fontSize: 13),
                                               ),
                                             ],
-                                          ),
-                                          child: Text(
-                                            lang.t('Accept Order', 'Kubali Agizo'),
-                                            textAlign: TextAlign.center,
-                                            style: GoogleFonts.inter(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 15,
-                                            ),
                                           ),
                                         ),
                                       ),
@@ -435,9 +429,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                             MaterialPageRoute(
                                               builder: (_) => ChatScreen(
                                                 orderId: order['id'],
-                                                otherPartyName: isFisherman
-                                                    ? (order['buyer_name'] ?? 'Buyer')
-                                                    : (order['accepted_by_name'] ?? 'Fisherman'),
+                                                otherPartyName: isFisherman ? (order['buyer_name'] ?? 'Buyer') : (order['accepted_by_name'] ?? 'Fisherman'),
                                               ),
                                             ),
                                           );
@@ -455,13 +447,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                             children: [
                                               Icon(Icons.chat_bubble_outline, color: AppTheme.cyanAccent, size: 16),
                                               const SizedBox(width: 6),
-                                              Text(
-                                                lang.t(
-                                                  'Chat with ${isFisherman ? 'Buyer' : 'Fisherman'}',
-                                                  'Ongea na ${isFisherman ? 'Mnunuzi' : 'Mvuvi'}',
-                                                ),
-                                                style: GoogleFonts.inter(color: AppTheme.cyanAccent, fontWeight: FontWeight.w600, fontSize: 13),
-                                              ),
+                                              Text(lang.t('Chat with ${isFisherman ? 'Buyer' : 'Fisherman'}', 'Ongea na ${isFisherman ? 'Mnunuzi' : 'Mvuvi'}'),
+                                                style: GoogleFonts.inter(color: AppTheme.cyanAccent, fontWeight: FontWeight.w600, fontSize: 13)),
                                             ],
                                           ),
                                         ),
@@ -478,23 +465,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                           decoration: BoxDecoration(
                                             color: AppTheme.emeraldAccent.withValues(alpha: 0.1),
                                             borderRadius: BorderRadius.circular(14),
-                                            border: Border.all(
-                                              color: AppTheme.emeraldAccent.withValues(alpha: 0.3),
-                                            ),
+                                            border: Border.all(color: AppTheme.emeraldAccent.withValues(alpha: 0.3)),
                                           ),
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
                                               Icon(Icons.check_circle, color: AppTheme.emeraldAccent, size: 18),
                                               const SizedBox(width: 8),
-                                              Text(
-                                                lang.t('Mark as Fulfilled', 'Weka kama Imekamilika'),
-                                                style: GoogleFonts.inter(
-                                                  color: AppTheme.emeraldAccent,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 15,
-                                                ),
-                                              ),
+                                              Text(lang.t('Mark as Fulfilled', 'Weka kama Imekamilika'),
+                                                style: GoogleFonts.inter(color: AppTheme.emeraldAccent, fontWeight: FontWeight.w600, fontSize: 15)),
                                             ],
                                           ),
                                         ),
@@ -515,14 +494,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                           children: [
                                             Icon(Icons.check_circle, color: AppTheme.emeraldAccent, size: 20),
                                             const SizedBox(width: 8),
-                                            Text(
-                                              lang.t('Delivery Completed', 'Uwasilishaji Umekamilika'),
-                                              style: GoogleFonts.inter(
-                                                color: AppTheme.emeraldAccent,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                              ),
-                                            ),
+                                            Text(lang.t('Delivery Completed', 'Uwasilishaji Umekamilika'),
+                                              style: GoogleFonts.inter(color: AppTheme.emeraldAccent, fontWeight: FontWeight.w600, fontSize: 14)),
                                           ],
                                         ),
                                       ),
@@ -545,23 +518,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
   Widget _sectionTitle(String title, Color color) {
     return Row(
       children: [
-        Container(
-          width: 3,
-          height: 14,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
+        Container(width: 3, height: 14, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade300,
-            fontSize: 12,
-          ),
-        ),
+        Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade300, fontSize: 12)),
       ],
     );
   }
@@ -571,20 +530,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
       children: [
         Text(emoji, style: const TextStyle(fontSize: 13)),
         const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontWeight: FontWeight.w500,
-              fontSize: 12,
-            ),
-          ),
-        ),
+        Text('$label: ', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+        Expanded(child: Text(value, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 12))),
       ],
     );
   }
@@ -595,21 +542,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
         children: [
           Text(emoji, style: const TextStyle(fontSize: 16)),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-              fontSize: 12,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          Text(value, style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 12), textAlign: TextAlign.center),
           const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 9),
-            textAlign: TextAlign.center,
-          ),
+          Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 9), textAlign: TextAlign.center),
         ],
       ),
     );
@@ -623,13 +558,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           child: Shimmer.fromColors(
             baseColor: Colors.grey.shade800,
             highlightColor: Colors.grey.shade700,
-            child: Container(
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade800,
-                borderRadius: BorderRadius.circular(24),
-              ),
-            ),
+            child: Container(height: 200, decoration: BoxDecoration(color: Colors.grey.shade800, borderRadius: BorderRadius.circular(24))),
           ),
         ),
         childCount: 4,

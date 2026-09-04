@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import User, MarketPrice, FishSpecies, HotelOrder, AuditLog, ChatMessage, OrderMedia, ChatRoom, FishProduct
+from .models import User, MarketPrice, FishSpecies, HotelOrder, AuditLog, ChatMessage, OrderMedia, ChatRoom, \
+    FishProduct, Payment, DeliveryAssignment
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -148,3 +149,17 @@ class FishProductCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = FishProduct
         fields = ('species', 'photo_url', 'price_per_kg', 'quantity_kg', 'market', 'description', 'expires_at')
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ('id', 'order', 'control_number', 'amount_tzs', 'status',
+                  'receipt_url', 'paid_at', 'approved_at', 'created_at')
+
+
+class DeliveryAssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeliveryAssignment
+        fields = ('id', 'order', 'delivery_person_name', 'delivery_person_phone',
+                  'estimated_time', 'meeting_area', 'status', 'assigned_at')
